@@ -1,0 +1,25 @@
+[project]
+name = "curso-mcp-ejercicios"
+version = "0.1.0"
+description = "Ejemplos y ejercicios del curso de MCP en Python"
+requires-python = ">=3.11"
+
+dependencies = [
+  # Dependencias comunes a la mayoría de ejercicios
+  "anthropic>=0.40.0",
+  "python-dotenv>=1.0.1",
+  # SDK MCP (ajusta el nombre/versión según el curso)
+  "mcp>=0.1.0",
+  # Herramientas usadas en algunos ejercicios
+  "streamlit>=1.38.0",
+  "arxiv>=1.4.8",
+  "openai>=1.40.0",
+  "httpx>=0.27.0",
+  # Cliente MySQL para el ejercicio 8 (sakila)
+  "mysql-connector-python>=8.0.0"
+]
+
+[tool.uv]
+# Configuración opcional de uv para el curso.
+# Nota: dejamos que uv use su mecanismo por defecto
+# para elegir la versión de Python disponible (>=3.11).

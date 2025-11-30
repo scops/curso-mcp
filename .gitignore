@@ -1,0 +1,53 @@
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Configuración sensible / local
+.env
+*.env
+
+# Cachés de Python
+__pycache__/
+*.py[cod]
+*.pyo
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Archivos de editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Artefactos de build / distribución
+build/
+dist/
+*.egg-info/
+*.log
+*.tmp
+
+# Cobertura / pruebas
+.coverage
+coverage.xml
+htmlcov/
+
+# Otros
+.python-version
+.uv/
+.serena/
+AGENTS.md
+CLAUDE.md
+plan.md
+
+# Archivos generados por los ejercicios
+ej7_mcp_rag_db/incidents.db
+ej7_mcp_rag_db/feedback.json
+ej7_mcp_rag_db/tests/tmp_feedback.json
+*.sqlite
+*.sqlite3

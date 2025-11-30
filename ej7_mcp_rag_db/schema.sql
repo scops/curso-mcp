@@ -1,0 +1,10 @@
+DROP TABLE IF EXISTS tickets;
+
+CREATE TABLE tickets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  tags TEXT,
+  created_at TEXT NOT NULL
+);
+
