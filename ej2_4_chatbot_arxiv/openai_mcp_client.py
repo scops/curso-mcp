@@ -149,12 +149,20 @@ async def run_single_query_with_openai_and_mcp(query: str) -> str:
             # Llamamos al servidor MCP
             result = await session.call_tool(tool_name, tool_args)
 
+            # Convertimos el resultado del tool a algo JSON‑serializable.
+            # Los ToolResult del SDK MCP incluyen objetos como TextContent,
+            # que no se pueden pasar directamente a json.dumps.
+            if hasattr(result, "model_dump"):
+                payload = result.model_dump(mode="json")
+            else:
+                payload = {"raw_result": str(result)}
+
             messages.append(
                 {
                     "role": "tool",
                     "tool_call_id": tc.id,
                     "content": json.dumps(
-                        result.content, ensure_ascii=False, indent=2
+                        payload, ensure_ascii=False, indent=2
                     ),
                 }
             )
@@ -202,4 +210,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
