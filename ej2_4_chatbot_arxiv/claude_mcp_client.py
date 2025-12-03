@@ -59,6 +59,39 @@ DEFAULT_MAX_TOKENS = int(os.getenv("ANTHROPIC_MAX_TOKENS", "800"))
 ARXIV_MCP_SERVER_PATH = str(Path(__file__).parent / "arxiv_mcp_server.py")
 
 
+def _serialize_mcp_content(content: Any) -> str | list:
+    """
+    Convierte el contenido del SDK MCP a un formato serializable por Anthropic.
+
+    El content puede ser:
+    - Una cadena (caso simple)
+    - Una lista de objetos TextContent, ImageContent, etc.
+    - Otros tipos que necesitan conversión
+    """
+    if isinstance(content, str):
+        return content
+
+    if isinstance(content, list):
+        # Lista de objetos de contenido del SDK MCP
+        result = []
+        for item in content:
+            if hasattr(item, "text"):
+                # TextContent o similar
+                result.append(item.text)
+            elif isinstance(item, str):
+                result.append(item)
+            else:
+                # Fallback: convertir a string
+                result.append(str(item))
+        return "\n".join(result) if result else ""
+
+    # Fallback para otros tipos
+    if hasattr(content, "text"):
+        return content.text
+
+    return str(content)
+
+
 async def _call_mcp_tools_for_query(
     user_query: str,
     model: str,
@@ -114,11 +147,12 @@ async def _call_mcp_tools_for_query(
                 )
                 # prompt_result.messages ya viene en el formato esperado
                 # por Anthropic (lista de mensajes role/content).
+                # Necesitamos serializar el content para que sea compatible con Anthropic
                 messages.extend(
                     [
                         {
                             "role": msg.role,
-                            "content": msg.content,
+                            "content": _serialize_mcp_content(msg.content),
                         }
                         for msg in prompt_result.messages
                     ]
@@ -184,7 +218,8 @@ async def _call_mcp_tools_for_query(
                 # Sesión MCP ejecuta el tool en el servidor
                 result = await session.call_tool(tool_name, tool_input)
 
-                # Pasamos el contenido tal cual al modelo.
+                # Pasamos el contenido serializado al modelo.
+                # El result.content puede contener objetos del SDK MCP que necesitan conversión
                 messages.append(
                     {
                         "role": "user",
@@ -192,7 +227,7 @@ async def _call_mcp_tools_for_query(
                             {
                                 "type": "tool_result",
                                 "tool_use_id": tool_id,
-                                "content": result.content,
+                                "content": _serialize_mcp_content(result.content),
                             }
                         ],
                     }
@@ -226,10 +261,9 @@ def run_claude_with_mcp_tools(
             max_tokens=max_tokens,
             # Para mantener el ejemplo sencillo, usamos siempre
             # el prompt de búsqueda general en arXiv definido en
-            # arxiv_mcp_server.py, pasando el tema como el propio
-            # texto de la consulta del usuario.
+            # arxiv_mcp_server.py.
             prompt_name="general_arxiv_search",
-            prompt_args={"tema": user_query},
+            prompt_args={},
         )
     )
 
