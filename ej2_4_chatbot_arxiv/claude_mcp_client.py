@@ -228,7 +228,7 @@ def run_claude_with_mcp_tools(
             # el prompt de búsqueda general en arXiv definido en
             # arxiv_mcp_server.py, pasando el tema como el propio
             # texto de la consulta del usuario.
-            prompt_name="Búsqueda general en arXiv",
+            prompt_name="general_arxiv_search",
             prompt_args={"tema": user_query},
         )
     )

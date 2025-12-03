@@ -96,7 +96,7 @@ def who_am_i(ctx: Context) -> dict:
     }
 
 
-@mcp.prompt(title="Búsqueda general en arXiv")
+@mcp.prompt(title="general_arxiv_search")
 def prompt_busqueda_general(tema: str) -> str:
     """
     Prompt de ejemplo para búsquedas generales en arXiv.
@@ -113,7 +113,7 @@ def prompt_busqueda_general(tema: str) -> str:
     )
 
 
-@mcp.prompt(title="Análisis detallado de un paper")
+@mcp.prompt(title="detailed_paper_analysis")
 def prompt_analisis_detallado(arxiv_id: str) -> list[base.Message]:
     """
     Prompt de ejemplo para análisis detallado de un único paper.

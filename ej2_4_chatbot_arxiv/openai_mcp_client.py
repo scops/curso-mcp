@@ -20,15 +20,29 @@ Ejercicio 4: Cliente OpenAI + MCP
 
 Objetivo didáctico:
 
-- Reutilizar el mismo servidor MCP de arXiv (`arxiv_mcp_server.py`).
-- Cambiar el modelo de lenguaje: ahora usamos OpenAI (por ejemplo, `gpt5-nano`).
+- Reutilizar el MISMO servidor MCP de arXiv (`arxiv_mcp_server.py`).
+- Cambiar el modelo de lenguaje: ahora usamos OpenAI (por ejemplo, `gpt-4o-mini`).
 - Ver claramente que, gracias a MCP, el servidor de tools **no depende**
   del modelo: solo cambiamos el cliente/orquestador.
+
+IMPORTANTE: Este cliente demuestra la interoperabilidad de MCP
+- El servidor MCP no sabe ni le importa si es llamado por Claude o OpenAI.
+- Ambos clientes (claude_mcp_client.py y openai_mcp_client.py) usan
+  el MISMO servidor (arxiv_mcp_server.py).
+- Esto muestra la verdadera ventaja de MCP: escribir herramientas una sola
+  vez y usarlas desde múltiples plataformas/modelos.
+
+Diferencias con el cliente de Anthropic (claude_mcp_client.py):
+- OpenAI no tiene soporte nativo para "prompts MCP" (feature de MCP específica
+  de Anthropic).
+- Pero ambos clientes pueden ejecutar las mismas tools MCP sin problemas.
+- Los results de tools se manejan de forma similar pero con pequeñas diferencias
+  en formato (OpenAI usa "tool" role, Anthropic usa "user" role con tool_result).
 
 Requisitos de entorno (.env):
 
 - OPENAI_API_KEY=tu_api_key_de_openai
-- OPENAI_MODEL=gpt5-nano   (o el modelo que quieras usar)
+- OPENAI_MODEL=gpt-4o-mini   (u otro modelo OpenAI que soporte tools)
 """
 
 
@@ -149,7 +163,7 @@ async def run_single_query_with_openai_and_mcp(query: str) -> str:
             # Llamamos al servidor MCP
             result = await session.call_tool(tool_name, tool_args)
 
-            # Convertimos el resultado del tool a algo JSON‑serializable.
+            # Convertimos el resultado del tool a algo JSON-serializable.
             # Los ToolResult del SDK MCP incluyen objetos como TextContent,
             # que no se pueden pasar directamente a json.dumps.
             if hasattr(result, "model_dump"):
@@ -157,13 +171,17 @@ async def run_single_query_with_openai_and_mcp(query: str) -> str:
             else:
                 payload = {"raw_result": str(result)}
 
+            # Aseguramos que el contenido es siempre un string (no una lista)
+            if isinstance(payload, str):
+                content_str = payload
+            else:
+                content_str = json.dumps(payload, ensure_ascii=False, indent=2)
+
             messages.append(
                 {
                     "role": "tool",
                     "tool_call_id": tc.id,
-                    "content": json.dumps(
-                        payload, ensure_ascii=False, indent=2
-                    ),
+                    "content": content_str,
                 }
             )
 

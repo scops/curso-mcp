@@ -51,3 +51,5 @@ ej7_mcp_rag_db/feedback.json
 ej7_mcp_rag_db/tests/tmp_feedback.json
 *.sqlite
 *.sqlite3
+papers
+papers/*

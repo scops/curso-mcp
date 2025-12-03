@@ -130,8 +130,8 @@ plantillas reutilizables que representan “modos de uso” del servidor:
 - El servidor tiene unas **instrucciones generales** (`mcp.instructions`) que describen su rol:
   - "Eres un asistente experto en buscar y leer artículos científicos en arxiv.org…".
 - También define prompts nombrados con `@mcp.prompt(...)`, por ejemplo:
-  - `Búsqueda general en arXiv` → plantilla para buscar papers sobre un tema y devolver una lista breve en español.
-  - `Análisis detallado de un paper` → plantilla para analizar a fondo un único paper a partir de su `arxiv_id`.
+  - `general_arxiv_search` → plantilla para buscar papers sobre un tema y devolver una lista breve en español.
+  - `detailed_paper_analysis` → plantilla para analizar a fondo un único paper a partir de su `arxiv_id`.
 
 > Fíjate que aquí MCP no solo estandariza **c_tools** (tools ejecutables), sino también **c_instr**:
 > instrucciones y plantillas de sistema que pueden ser compartidas por distintos clientes sin
@@ -261,7 +261,7 @@ Los tests de este ejercicio comprueban que:
 En estos ejercicios de arXiv trabajas principalmente:
 
 - **c_tools**: tools para búsqueda y extracción de información en arXiv (`search_papers`, `extract_info`, y sus variantes MCP).
-- **c_instr**: instrucciones de sistema y prompts MCP (`mcp.instructions`, `Búsqueda general en arXiv`, `Análisis detallado de un paper`).
+- **c_instr**: instrucciones de sistema y prompts MCP (`mcp.instructions`, `general_arxiv_search`, `detailed_paper_analysis`).
 - **c_state**: introspección básica del servidor (`server_info`, `who_am_i`) para ver su configuración.
 
 Primitivos MCP/FastMCP que aparecen:
