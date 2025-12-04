@@ -2,12 +2,21 @@ from __future__ import annotations
 
 import os
 from typing import Any, Dict, List
+from pathlib import Path
+import sys
 
 import httpx
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
-from .sakila_db import fetch_all, execute_and_return_id
+try:
+    # Caso habitual: ejecutado como módulo del paquete ej8_sakila_streaming
+    from .sakila_db import fetch_all, execute_and_return_id
+except ImportError:
+    # Fallback cuando se ejecuta directamente el script vía
+    # `python ej8_sakila_streaming/sakila_mcp_server.py`
+    sys.path.append(str(Path(__file__).resolve().parent))
+    from sakila_db import fetch_all, execute_and_return_id
 
 
 load_dotenv()
@@ -191,4 +200,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
