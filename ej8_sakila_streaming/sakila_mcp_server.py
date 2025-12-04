@@ -7,7 +7,7 @@ import httpx
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
-from sakila_db import fetch_all, execute_and_return_id
+from .sakila_db import fetch_all, execute_and_return_id
 
 
 load_dotenv()
@@ -191,5 +191,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
 

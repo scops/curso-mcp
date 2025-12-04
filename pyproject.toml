@@ -16,7 +16,11 @@ dependencies = [
   "openai>=1.40.0",
   "httpx>=0.27.0",
   # Cliente MySQL para el ejercicio 8 (sakila)
-  "mysql-connector-python>=8.0.0"
+  "mysql-connector-python>=8.0.0",
+  # Integración LangChain + MCP para el ejercicio 11
+  "langchain-mcp>=0.2.1",
+  # Stack LangChain/SQL agent para el ejercicio 11
+  "langchain-community==0.3.31"
 ]
 
 [tool.uv]
