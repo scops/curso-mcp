@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from contextlib import AsyncExitStack
 import asyncio
+import os
+import sys
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -59,7 +61,7 @@ async def _call_remote_tool_stdio(
 
     try:
         params = StdioServerParameters(
-            command="python",
+            command=os.getenv("PYTHON_EXECUTABLE", sys.executable),
             args=[str(server_path)],
             env=None,
         )

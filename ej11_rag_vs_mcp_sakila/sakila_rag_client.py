@@ -13,15 +13,28 @@ responder a la pregunta.
 """
 
 import os
+import sys
+from pathlib import Path
 from typing import Any, Dict, List
 
 from dotenv import load_dotenv
-from langchain_core.language_models import ChatAnthropic
+try:
+    # LangChain reciente: integración oficial en langchain-anthropic
+    from langchain_anthropic import ChatAnthropic
+except ImportError:  # pragma: no cover - compatibilidad con versiones antiguas
+    # Algunas versiones antiguas lo exponían vía langchain_community
+    from langchain_community.chat_models import ChatAnthropic  # type: ignore[no-redef]
 from langchain_community.agent_toolkits import (
     SQLDatabaseToolkit,
     create_sql_agent,
 )
 from langchain_community.utilities import SQLDatabase
+
+
+# Aseguramos que el directorio raíz del proyecto está en sys.path
+BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.append(str(BASE_DIR))
 
 from ej8_sakila_streaming.sakila_db import _get_mysql_config
 

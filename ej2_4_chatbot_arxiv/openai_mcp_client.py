@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import sys
 from contextlib import AsyncExitStack
 from pathlib import Path
 from typing import Any, Dict, List
@@ -79,7 +80,7 @@ async def run_single_query_with_openai_and_mcp(query: str) -> str:
 
     try:
         server_params = StdioServerParameters(
-            command=os.getenv("PYTHON_EXECUTABLE", "python"),
+            command=os.getenv("PYTHON_EXECUTABLE", sys.executable),
             args=[ARXIV_MCP_SERVER_PATH],
             env=None,
         )

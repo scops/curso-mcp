@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import sys
 from contextlib import AsyncExitStack
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
@@ -108,8 +109,10 @@ async def _call_mcp_tools_for_query(
     exit_stack = AsyncExitStack()
 
     try:
+        # Prefer the current interpreter so we stay in the same venv.
+        python_executable = os.getenv("PYTHON_EXECUTABLE", sys.executable)
         server_params = StdioServerParameters(
-            command=os.getenv("PYTHON_EXECUTABLE", "python"),
+            command=python_executable,
             args=[ARXIV_MCP_SERVER_PATH],
             env=None,
         )

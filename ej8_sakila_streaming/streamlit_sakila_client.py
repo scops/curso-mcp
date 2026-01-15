@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import AsyncExitStack
+import os
+import sys
 from pathlib import Path
 from typing import Any, Dict, List
+import json
 
 import streamlit as st
 from anthropic import Anthropic
@@ -14,18 +17,18 @@ from mcp.client.stdio import stdio_client
 
 load_dotenv()
 
-ANTHROPIC_API_KEY = st.secrets.get("ANTHROPIC_API_KEY") or None
-if not ANTHROPIC_API_KEY:
-    import os
-
+try:
+    # Intentamos usar secrets.toml si existe, pero sin romper si falta.
+    ANTHROPIC_API_KEY = st.secrets["ANTHROPIC_API_KEY"]  # type: ignore[assignment]
+except Exception:
     ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+
 if not ANTHROPIC_API_KEY:
     raise RuntimeError("Falta ANTHROPIC_API_KEY en el entorno / .env")
 
-MODEL = st.secrets.get("MODEL") or None
-if not MODEL:
-    import os
-
+try:
+    MODEL = st.secrets["MODEL"]  # type: ignore[assignment]
+except Exception:
     MODEL = os.getenv("MODEL", "claude-haiku-4-5-20251001")
 
 anthropic_client = Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -35,7 +38,7 @@ SERVER_PATH = str(Path(__file__).parent / "sakila_mcp_server.py")
 
 async def _open_mcp_session(exit_stack: AsyncExitStack) -> ClientSession:
     server_params = StdioServerParameters(
-        command="python",
+        command=os.getenv("PYTHON_EXECUTABLE", sys.executable),
         args=[SERVER_PATH],
         env=None,
     )
@@ -119,7 +122,8 @@ async def ask_llm_with_mcp(user_query: str) -> str:
                             {
                                 "type": "tool_result",
                                 "tool_use_id": tool_id,
-                                "content": payload,
+                                "content": json.dumps(payload, ensure_ascii=False),
+                                
                             }
                         ],
                     }
@@ -217,4 +221,3 @@ de los resultados de estos tools en clase.
 
 if __name__ == "__main__":
     main()
-

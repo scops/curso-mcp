@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 from contextlib import AsyncExitStack
 import json
+import os
+import sys
 from pathlib import Path
 from typing import Any, Dict
 
@@ -60,7 +62,7 @@ async def run_single_query(question: str) -> Dict[str, Any]:
 
     try:
         server_params = StdioServerParameters(
-            command="python",
+            command=os.getenv("PYTHON_EXECUTABLE", sys.executable),
             args=[SERVER_PATH],
             env=None,
         )

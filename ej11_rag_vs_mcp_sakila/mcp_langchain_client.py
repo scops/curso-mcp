@@ -15,6 +15,8 @@ En el benchmarking del ejercicio, compararemos este enfoque con el RAG de
 """
 
 import asyncio
+import os
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -43,7 +45,7 @@ async def _sakila_session() -> ClientSession:
 
     async with stdio_client(
         StdioServerParameters(
-            command="python",
+            command=os.getenv("PYTHON_EXECUTABLE", sys.executable),
             args=[str(server_path)],
             cwd=str(ROOT_DIR),
         )
@@ -129,4 +131,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
