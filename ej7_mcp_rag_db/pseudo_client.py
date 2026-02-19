@@ -64,7 +64,7 @@ async def run_single_query(question: str) -> Dict[str, Any]:
         server_params = StdioServerParameters(
             command=os.getenv("PYTHON_EXECUTABLE", sys.executable),
             args=[SERVER_PATH],
-            env=None,
+            env=dict(os.environ),
         )
 
         stdio_transport = await exit_stack.enter_async_context(
