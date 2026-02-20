@@ -20,7 +20,8 @@ dependencies = [
   # Integración LangChain + MCP para el ejercicio 11
   "langchain-mcp>=0.2.1",
   # Stack LangChain/SQL agent para el ejercicio 11
-  "langchain-community==0.3.31"
+  "langchain-community==0.3.31",
+  "langchain-anthropic>=0.3.22",
 ]
 
 [tool.uv]

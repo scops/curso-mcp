@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
-from langchain_core.language_models import ChatAnthropic
+from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import Runnable, RunnablePassthrough
 from langchain_mcp import MCPToolkit
