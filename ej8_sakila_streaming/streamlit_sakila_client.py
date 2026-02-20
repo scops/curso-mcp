@@ -200,8 +200,12 @@ de los resultados de estos tools en clase.
             try:
                 session = await _open_mcp_session(exit_stack)
                 result = await session.call_tool("get_rating_distribution", {})
-                # result.content suele ser un dict ya serializable
+                # result.content es una lista de bloques TextContent; extraemos el JSON del primero
                 content = getattr(result, "content", result)
+                if isinstance(content, list) and content:
+                    text = getattr(content[0], "text", None)
+                    if text:
+                        return json.loads(text)  # type: ignore[no-any-return]
                 return content  # type: ignore[no-any-return]
             finally:
                 await exit_stack.aclose()
