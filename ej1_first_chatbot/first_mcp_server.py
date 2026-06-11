@@ -53,7 +53,15 @@ async def chiste_de_padre() -> str:
 #   - Usa @mcp.tool() encima de la función.
 #   - Declara tipos de entrada y salida.
 #   - Escribe un docstring corto explicando qué hace.
-
+@mcp.tool()
+async def contar_palabras_normalizado(texto: str) -> int:
+    """
+    Cuenta palabras ignorando múltiples espacios
+    y saltos de línea.
+    """
+    import re
+    palabras = re.findall(r"\S+", texto)
+    return len(palabras)
 
 def main() -> None:
     # Ejecutamos el servidor usando transporte STDIO,
