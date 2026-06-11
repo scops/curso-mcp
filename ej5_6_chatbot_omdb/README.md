@@ -29,7 +29,7 @@ Como en el resto del curso:
   ```env
   ANTHROPIC_API_KEY=tu_api_key_de_anthropic
   OMDB_API_KEY=tu_api_key_de_omdb
-  ANTHROPIC_MODEL=claude-3-5-sonnet-latest
+  ANTHROPIC_MODEL=claude-sonnet-4-6
   OMDB_MCP_URL=http://127.0.0.1:8000/mcp
   ```
 
