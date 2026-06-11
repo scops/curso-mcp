@@ -22,6 +22,9 @@ dependencies = [
   # Stack LangChain/SQL agent para el ejercicio 11
   "langchain-community==0.3.31",
   "langchain-anthropic>=0.3.22",
+  # Observabilidad con Langfuse
+  "langfuse>=3.0.0",
+  "opentelemetry-instrumentation-anthropic>=0.35.0",
 ]
 
 [tool.uv]
