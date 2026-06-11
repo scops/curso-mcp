@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import math
 import os
 import sqlite3
@@ -123,9 +124,12 @@ def build_index(db_path: Path | str = DB_PATH) -> int:
     """
     global _TICKETS, _EMBEDDINGS
 
+    logging.debug("build_index: cargando tickets...")
     tickets = _load_tickets(db_path)
+    logging.debug("build_index: %d tickets cargados, generando embeddings...", len(tickets))
     texts = [_prepare_text(t) for t in tickets]
     embeddings = _embed_texts(texts)
+    logging.debug("build_index: embeddings generados OK")
 
     _TICKETS = tickets
     _EMBEDDINGS = embeddings
