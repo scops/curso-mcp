@@ -106,10 +106,6 @@ async def run_single_query(question: str) -> Dict[str, Any]:
                 print("Contenido (resumen):")
                 print(snippet)
 
-        print("\nLlamando a index_tickets()...")
-        index_result = await session.call_tool("index_tickets", {})
-        print("Resultado index_tickets:", index_result.content)
-
         print("\nLlamando a rag_answer()...")
         rag_result = await session.call_tool(
             "rag_answer", {"question": question, "k": 5}
