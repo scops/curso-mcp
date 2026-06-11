@@ -6,7 +6,6 @@ import os
 from typing import Any, Dict, List, Tuple
 
 import streamlit as st
-from anthropic import Anthropic
 from dotenv import load_dotenv
 
 from tools_arxiv import search_papers, extract_info
@@ -15,7 +14,18 @@ from tools_arxiv import search_papers, extract_info
 # Configuración básica
 # -----------------------
 
+# 1. Cargar variables de entorno PRIMERO (incluye claves Langfuse)
 load_dotenv()
+
+# 2. Configurar Langfuse ANTES de importar Anthropic
+#    Solo se activa si hay credenciales (LANGFUSE_PUBLIC_KEY/SECRET_KEY);
+#    si no, queda como no-op silencioso. Ver langfuse_setup.py.
+from langfuse_setup import init_langfuse, observe, propagate_attributes  # noqa: E402
+
+langfuse = init_langfuse(instrument_anthropic=True)
+
+# 3. Ahora sí importar Anthropic (ya parcheado por el instrumentor)
+from anthropic import Anthropic  # noqa: E402
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 if not ANTHROPIC_API_KEY:
@@ -80,6 +90,7 @@ TOOLS: List[Dict[str, Any]] = [
 # Ejecutor local de tools
 # -----------------------
 
+@observe(name="tool-execute-local")
 def execute_tool_locally(name: str, args: Dict[str, Any]) -> str:
     """
     Ejecuta la herramienta Python correspondiente y devuelve
@@ -111,6 +122,7 @@ def execute_tool_locally(name: str, args: Dict[str, Any]) -> str:
 # Orquestación: Claude + tools
 # -----------------------
 
+@observe(name="arxiv-chat-pipeline")
 def run_claude_with_tools(
     user_query: str,
     model: str = DEFAULT_MODEL,
@@ -233,9 +245,16 @@ if user_input:
     with st.chat_message("assistant"):
         with st.spinner("Pensando con herramientas..."):
             try:
-                answer, _messages = run_claude_with_tools(user_input)
+                with propagate_attributes(
+                    session_id=st.session_state.get("session_id", "streamlit-session"),
+                    tags=["arxiv", "hardcoded-tools"],
+                    metadata={"tool_mode": "hardcoded", "model": DEFAULT_MODEL},
+                ):
+                    answer, _messages = run_claude_with_tools(user_input)
             except Exception as e:
                 answer = f"Ha ocurrido un error llamando a Claude: {e}"
+            finally:
+                langfuse.flush()
 
         st.markdown(answer)
 
