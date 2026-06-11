@@ -99,6 +99,10 @@ async def search_movies(
     year: int | None = None,
     max_results: int = 5,
     ) -> dict[ str, Any]:
+    """
+    Permite buscar películas en la api rest de omdb
+    """
+    
     # pasamos query y buscamos, devolvemos resultado.
     # saneamos la query para dejar sólo un posible nombre de película
     query = (query or "").strip()
@@ -152,11 +156,18 @@ async def search_movies(
     }
     
 # mcp tool get movie details
-@mcp.tool()
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True
+    }
+)
 async def get_movie_detail(
     imdb_id: str,
     plot: Literal["short", "full"] = "short"
 ) -> dict[str, Any]:
+    """Devuelve detalles sobre la película indicada, necesita un imdb_id válido. Se puede especificar un plot resumido o uno detallado."""
     # pedimos por id y devolvemos result
     imdb_id_clean = (imdb_id or "").strip()
     # Validar que sea un ID de IMDB válido (formato: tt seguido de 7-10 dígitos)
