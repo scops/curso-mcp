@@ -66,7 +66,7 @@ async def _build_agent() -> Runnable:
         await toolkit.initialize()
         tools = toolkit.get_tools()
 
-    llm = ChatAnthropic(model="claude-3-5-haiku-latest")
+    llm = ChatAnthropic(model="claude-haiku-4-5-20251001")
 
     prompt = ChatPromptTemplate.from_messages(
         [
