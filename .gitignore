@@ -53,3 +53,4 @@ ej7_mcp_rag_db/tests/tmp_feedback.json
 *.sqlite3
 papers
 papers/*
+instructor

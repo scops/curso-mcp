@@ -115,7 +115,7 @@ En ese directorio `mcp` crea un fichero `.env` con al menos:
 
 ```env
 ANTHROPIC_API_KEY=tu_api_key_de_anthropic
-MODEL=claude-haiku-4-5-20251001
+MODEL=claude-haiku-4-5
 ```
 
 Notas:

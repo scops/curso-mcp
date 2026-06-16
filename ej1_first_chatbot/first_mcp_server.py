@@ -1,4 +1,3 @@
-from typing import Any
 import random
 from mcp.server.fastmcp import FastMCP
 
@@ -32,7 +31,7 @@ CHISTES_DE_PADRE = [
     "¿Sabes cuál es el café más peligroso del mundo? El ex-presoooo.",
     "¿Qué hace una abeja en el gimnasio? ¡Zum-ba!",
     "—Papá, papá, ¿cuánto cuesta casarse? —No lo sé hijo, todavía lo sigo pagando.",
-    "¿Qué le dice una impresora a otra? —¿Esa hoja es tuya o es una impresión mía?",
+    "¿Qué le dice una impresora a otra? —¿Esa hoja es tuya o es impresión mía?",
     "—Oye, ¿cuál es tu plato favorito y por qué? —Pues el hondo, porque cabe más comida.",
 ]
 
@@ -53,15 +52,7 @@ async def chiste_de_padre() -> str:
 #   - Usa @mcp.tool() encima de la función.
 #   - Declara tipos de entrada y salida.
 #   - Escribe un docstring corto explicando qué hace.
-@mcp.tool()
-async def contar_palabras_normalizado(texto: str) -> int:
-    """
-    Cuenta palabras ignorando múltiples espacios
-    y saltos de línea.
-    """
-    import re
-    palabras = re.findall(r"\S+", texto)
-    return len(palabras)
+
 
 def main() -> None:
     # Ejecutamos el servidor usando transporte STDIO,

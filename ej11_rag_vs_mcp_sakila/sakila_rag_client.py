@@ -46,7 +46,7 @@ MODEL = os.getenv("MODEL")
 if not MODEL:
     raise RuntimeError(
         "La variable de entorno MODEL no está definida. "
-        "Crea un archivo .env con una línea como: MODEL=claude-haiku-4-5-20251001"
+        "Crea un archivo .env con una línea como: MODEL=claude-haiku-4-5"
     )
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
