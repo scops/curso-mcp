@@ -17,10 +17,13 @@ dependencies = [
   "httpx>=0.27.0",
   # Cliente MySQL para el ejercicio 8 (sakila)
   "mysql-connector-python>=8.0.0",
-  # Integración LangChain + MCP para el ejercicio 11
-  "langchain-mcp>=0.2.1",
+  # Integración LangChain + MCP para el ejercicio 11.
+  # Nota: 0.3.0 importa `streamable_http_client`, que el SDK `mcp` 1.23
+  # expone como `streamablehttp_client`; se fija <0.3.0 hasta que upstream
+  # lo corrija.
+  "langchain-mcp-adapters>=0.2.0,<0.3.0",
   # Stack LangChain/SQL agent para el ejercicio 11
-  "langchain-community==0.3.31",
+  "langchain-community>=0.4.2",
   "langchain-anthropic>=0.3.22",
   # Observabilidad con Langfuse
   "langfuse>=3.0.0",

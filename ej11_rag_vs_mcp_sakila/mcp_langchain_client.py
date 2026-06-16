@@ -6,7 +6,7 @@ Cliente LangChain + MCP para sakila-simple.
 Este módulo ilustra el enfoque "MCP tool-driven":
 
 - Levanta el servidor MCP `sakila-simple` por STDIO.
-- Usa `langchain-mcp` para exponer sus tools como herramientas de LangChain.
+- Usa `langchain-mcp-adapters` para exponer sus tools como herramientas de LangChain.
 - Construye un agente que decide qué tool usar (por ejemplo, buscar por título
   o por categoría) y devuelve una respuesta al usuario.
 
@@ -25,7 +25,7 @@ from dotenv import load_dotenv
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import Runnable, RunnablePassthrough
-from langchain_mcp import MCPToolkit
+from langchain_mcp_adapters.tools import load_mcp_tools
 from mcp.client.session import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 
@@ -62,9 +62,8 @@ async def _build_agent() -> Runnable:
     Construye un agente LangChain que utiliza las tools MCP de sakila-simple.
     """
     async with _sakila_session() as session:
-        toolkit = MCPToolkit(session=session)
-        await toolkit.initialize()
-        tools = toolkit.get_tools()
+        await session.initialize()
+        tools = await load_mcp_tools(session)
 
     llm = ChatAnthropic(model="claude-haiku-4-5")
 
