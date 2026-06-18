@@ -42,6 +42,45 @@ class OrchestratorToolsTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("incidents-rag", names)
         self.assertIn("arxiv-tools", names)
 
+    async def test_research_incident_propaga_errores_de_servidor_remoto(self) -> None:
+        async def boom(server_path, tool_name, arguments):
+            raise RuntimeError("servidor remoto caído")
+
+        with patch.object(server, "_call_remote_tool_stdio", boom):
+            result = await server.research_incident_with_papers(
+                incident_question="errores 500",
+                topic="db",
+            )
+
+        # _safe_call captura la excepción y devuelve un payload de error,
+        # de modo que el orquestador sigue respondiendo.
+        self.assertIsNone(result["incident_answer"])
+        self.assertEqual(result["incident_sources"], [])
+        self.assertEqual(result["arxiv_results"]["error"], "arxiv_error")
+
+
+class ChooseArxivTopicTests(unittest.TestCase):
+    def test_topic_explicito_se_respeta(self) -> None:
+        self.assertEqual(
+            server._choose_arxiv_topic("lo que sea", "database locks"),
+            "database locks",
+        )
+
+    def test_timeout_mapea_a_topic_de_rendimiento(self) -> None:
+        topic = server._choose_arxiv_topic("La API da timeout", None)
+        self.assertIn("timeout", topic)
+        self.assertIn("performance", topic)
+
+    def test_error_500_mapea_a_topic_http(self) -> None:
+        topic = server._choose_arxiv_topic("Tenemos un error 500", None)
+        self.assertIn("500", topic)
+
+    def test_sin_pista_usa_la_propia_pregunta(self) -> None:
+        self.assertEqual(
+            server._choose_arxiv_topic("algo raro pasa", None),
+            "algo raro pasa",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -78,5 +78,8 @@ def load_tests(  # type: ignore[override]
     _load_test_modules_from_dir(
         loader, suite, root / "ej9_orquestador" / "tests"
     )
+    _load_test_modules_from_dir(
+        loader, suite, root / "ej11_rag_vs_mcp_sakila" / "tests"
+    )
 
     return suite
