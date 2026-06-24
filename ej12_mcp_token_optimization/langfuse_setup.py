@@ -1,17 +1,13 @@
 """
-Configuración centralizada de Langfuse para el ejercicio 2-4.
+Configuración centralizada de Langfuse para el ejercicio 12.
 
-Langfuse (y los instrumentors de OpenTelemetry) SOLO se activan si hay
-credenciales en el entorno: LANGFUSE_PUBLIC_KEY y LANGFUSE_SECRET_KEY.
+Langfuse (y el instrumentor de Anthropic) SOLO se activan si hay credenciales
+en el entorno: LANGFUSE_PUBLIC_KEY y LANGFUSE_SECRET_KEY.
 
 Sin esas claves, este módulo expone versiones no-op de `observe`,
 `propagate_attributes` y del cliente (`flush()`, `shutdown()`, ...), de modo
-que el resto del código no cambia y el curso se ejecuta sin ruido: ni el
-warning "Client will be disabled" ni los "Failed to export span batch 404"
-que aparecen cuando no hay una instancia de Langfuse escuchando.
-
-Los módulos del ejercicio deben importar `observe` / `propagate_attributes`
-desde aquí (no desde `langfuse`) y crear el cliente con `init_langfuse()`.
+que el benchmark se ejecuta igual y solo imprime la tabla local de tokens,
+sin warnings ni intentos de exportación fallidos.
 """
 from __future__ import annotations
 
@@ -27,17 +23,14 @@ _ENABLED = langfuse_enabled()
 
 
 if _ENABLED:
-    # Langfuse activo: usamos las funciones reales.
     from langfuse import observe, get_client, propagate_attributes  # type: ignore
 else:
-    # Langfuse desactivado: no importamos el cliente real (evita el warning
-    # de autenticación) y damos no-ops con la misma firma de uso.
     from contextlib import contextmanager
 
     def observe(*args, **kwargs):  # type: ignore[misc]
         """No-op de @observe y @observe(name=...)."""
         if len(args) == 1 and callable(args[0]) and not kwargs:
-            return args[0]  # uso sin paréntesis: @observe
+            return args[0]
 
         def _decorator(func):
             return func
@@ -50,8 +43,6 @@ else:
         yield
 
     class _NoOpLangfuse:
-        """Cliente vacío: cualquier método (flush, shutdown, ...) es no-op."""
-
         def __getattr__(self, _name):
             return lambda *a, **k: None
 
@@ -64,8 +55,9 @@ def init_langfuse(*, instrument_anthropic: bool = False):
     Devuelve el cliente Langfuse: real si hay credenciales, no-op si no.
 
     Con `instrument_anthropic=True` y Langfuse activo, parchea el SDK de
-    Anthropic (AnthropicInstrumentor) para trazar automáticamente las
-    llamadas a la API. Debe llamarse ANTES de importar/instanciar Anthropic.
+    Anthropic (AnthropicInstrumentor) para trazar automáticamente las llamadas
+    a la API (modelo, tokens, latencia). Debe llamarse ANTES de instanciar
+    Anthropic.
     """
     if _ENABLED and instrument_anthropic:
         from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor

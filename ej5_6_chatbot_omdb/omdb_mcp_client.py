@@ -4,7 +4,7 @@ import os
 
 import streamlit as st
 from mcp import ClientSession
-from mcp.client.streamable_http import streamablehttp_client
+from mcp.client.streamable_http import streamable_http_client
 
 # URL del servidor MCP (puedes sobreescribirla con OMDB_MCP_URL en entorno)
 MCP_URL = os.getenv("OMDB_MCP_URL", "http://127.0.0.1:8000/mcp")
@@ -15,7 +15,7 @@ async def _call_mcp_tool_async(tool_name: str, arguments: dict | None = None):
     Conecta al servidor MCP HTTP, inicializa sesión y llama al tool indicado.
     Devuelve el objeto ToolResult del SDK MCP.
     """
-    async with streamablehttp_client(MCP_URL) as (read, write, _get_session_id):
+    async with streamable_http_client(MCP_URL) as (read, write, _get_session_id):
         async with ClientSession(read, write) as session:
             await session.initialize()
             result = await session.call_tool(tool_name, arguments=arguments or {})
@@ -132,7 +132,7 @@ with tab_search:
 
 
 with tab_details:
-    st.subheader("Detalles de película/serie (tool MCP `get_movie_details`)")
+    st.subheader("Detalles de película/serie (tool MCP `get_movie_detail`)")
 
     imdb_id = st.text_input("IMDb ID (ej: tt0133093)", value="tt0133093")
     plot = st.selectbox("Nivel de detalle de sinopsis (plot)", options=["short", "full"], index=0)
@@ -146,9 +146,9 @@ with tab_details:
                 "plot": plot,
             }
 
-            with st.spinner("Llamando al tool MCP `get_movie_details`..."):
+            with st.spinner("Llamando al tool MCP `get_movie_detail`..."):
                 try:
-                    raw_result = call_mcp_tool("get_movie_details", args)
+                    raw_result = call_mcp_tool("get_movie_detail", args)
                     payload = unwrap_tool_result(raw_result)
                 except Exception as e:
                     st.error(f"Error al llamar al servidor MCP: {e}")

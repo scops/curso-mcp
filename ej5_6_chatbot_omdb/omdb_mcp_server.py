@@ -6,7 +6,26 @@ from typing import Any, Literal
 
 import httpx
 from dotenv import load_dotenv
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import Context, FastMCP
+
+# ----------------------------------------------------------------------------
+# El "Context" (ctx) de MCP
+# ----------------------------------------------------------------------------
+# OJO: esto NO tiene nada que ver con el "contexto conversacional" del cliente
+# (la lista de mensajes que recuerda el LLM). Son dos cosas distintas que por
+# desgracia se suelen abreviar igual ("ctx").
+#
+# El `Context` de MCP es un objeto que FastMCP INYECTA automáticamente en una
+# tool cuando declaras un parámetro con ese tipo (ver `ctx: Context` más abajo).
+# No se lo pide al usuario ni al LLM: no aparece en el input_schema de la tool.
+# Sirve para que la tool, MIENTRAS se ejecuta en el servidor, pueda "hablar
+# hacia atrás" con el cliente:
+#   - ctx.info() / debug() / warning() / error()  -> enviar logs al cliente
+#   - ctx.report_progress(actual, total)          -> notificar progreso
+#   - ctx.read_resource(uri)                       -> leer un resource del server
+#   - ctx.sample(...)                              -> pedir al cliente que use su LLM
+# Aquí lo usamos solo para logging y progreso, que es lo más fácil de ver.
+# ----------------------------------------------------------------------------
 
 load_dotenv()
 
@@ -93,16 +112,19 @@ def _format_detail_pelicula(pelicula: dict[str, Any]) -> dict[str, Any]:
 
 # mcp tool search_movies
 @mcp.tool()
-async def search_movies( 
-    query: str, 
+async def search_movies(
+    query: str,
     media_type: Literal["movie", "series", "episode", "all"] = "all",
     year: int | None = None,
     max_results: int = 5,
+    ctx: Context = None,  # inyectado por FastMCP; NO lo ve el LLM/usuario
     ) -> dict[ str, Any]:
     """
     Permite buscar películas en la api rest de omdb
     """
-    
+    # Logging vía Context: este mensaje viaja al CLIENTE (no es un print local).
+    await ctx.info(f"search_movies: consultando OMDb con query='{query}'")
+
     # pasamos query y buscamos, devolvemos resultado.
     # saneamos la query para dejar sólo un posible nombre de película
     query = (query or "").strip()
@@ -141,7 +163,10 @@ async def search_movies(
     
     limited = search_items[:max_results]
     items = [_format_basic_pelicula(item) for item in limited]
-    
+
+    # Progreso vía Context: útil cuando una tool es lenta o procesa por lotes.
+    await ctx.info(f"search_movies: {len(items)} resultados devueltos")
+
     note = None
     if total_resp > len(items):
         note = (
@@ -165,9 +190,11 @@ async def search_movies(
 )
 async def get_movie_detail(
     imdb_id: str,
-    plot: Literal["short", "full"] = "short"
+    plot: Literal["short", "full"] = "short",
+    ctx: Context = None,  # inyectado por FastMCP; NO lo ve el LLM/usuario
 ) -> dict[str, Any]:
     """Devuelve detalles sobre la película indicada, necesita un imdb_id válido. Se puede especificar un plot resumido o uno detallado."""
+    await ctx.info(f"get_movie_detail: pidiendo detalles de {imdb_id}")
     # pedimos por id y devolvemos result
     imdb_id_clean = (imdb_id or "").strip()
     # Validar que sea un ID de IMDB válido (formato: tt seguido de 7-10 dígitos)

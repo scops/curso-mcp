@@ -54,3 +54,4 @@ ej7_mcp_rag_db/tests/tmp_feedback.json
 papers
 papers/*
 instructor
+.mcp.json

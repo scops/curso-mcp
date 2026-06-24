@@ -46,17 +46,11 @@ Requisitos de entorno (.env):
 """
 
 
-# 1. Cargar variables de entorno PRIMERO (incluye claves Langfuse)
+# 1. Cargar variables de entorno PRIMERO
 load_dotenv()
 
-# 2. Configurar Langfuse (solo activo si hay credenciales; ver langfuse_setup.py)
-from langfuse_setup import init_langfuse, observe, propagate_attributes  # noqa: E402
-
-langfuse = init_langfuse()
-
-# 3. Importar OpenAI con el wrapper de Langfuse (drop-in replacement)
-#    Captura automáticamente todas las llamadas: modelo, tokens, latencia, I/O
-from langfuse.openai import OpenAI  # noqa: E402
+# 2. Importar OpenAI
+from openai import OpenAI  # noqa: E402
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
@@ -72,7 +66,6 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 ARXIV_MCP_SERVER_PATH = str(Path(__file__).parent / "arxiv_mcp_server.py")
 
 
-@observe(name="mcp-openai-query")
 async def run_single_query_with_openai_and_mcp(query: str) -> str:
     """
     Ejecuta una consulta usando:
@@ -208,7 +201,6 @@ async def run_single_query_with_openai_and_mcp(query: str) -> str:
         await exit_stack.aclose()
 
 
-@observe(name="arxiv-chat-pipeline")
 def main() -> None:
     """
     Pequeño CLI interactivo:
@@ -228,24 +220,15 @@ def main() -> None:
             break
 
         try:
-            with propagate_attributes(
-                tags=["arxiv", "mcp-tools", "openai"],
-                metadata={"tool_mode": "mcp", "model": OPENAI_MODEL},
-            ):
-                answer = asyncio.run(
-                    run_single_query_with_openai_and_mcp(query)
-                )
+            answer = asyncio.run(
+                run_single_query_with_openai_and_mcp(query)
+            )
         except Exception as e:
             answer = f"[ERROR llamando a OpenAI/MCP] {e}"
-        finally:
-            langfuse.flush()
 
         print("\nBot (OpenAI + MCP):\n")
         print(answer)
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    finally:
-        langfuse.shutdown()
+    main()

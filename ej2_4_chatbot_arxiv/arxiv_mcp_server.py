@@ -5,13 +5,8 @@ from typing import Any, Dict
 
 from dotenv import load_dotenv
 
-# Cargar variables de entorno (incluye claves Langfuse) antes de importar Langfuse
+# Cargar variables de entorno
 load_dotenv()
-
-# Langfuse solo se activa si hay credenciales; si no, no-op. Ver langfuse_setup.py
-from langfuse_setup import init_langfuse, observe  # noqa: E402
-
-langfuse = init_langfuse()
 
 from mcp.server.fastmcp import FastMCP, Context  # noqa: E402
 from mcp.server.elicitation import (  # noqa: E402
@@ -57,7 +52,6 @@ mcp = FastMCP("arxiv-tools", instructions=INSTRUCTIONS)
 
 
 @mcp.tool()
-@observe(name="tool-search-papers")
 async def search_papers_mcp(topic: str, max_results: int = 5) -> Dict[str, Any]:
     """
     Versión MCP de search_papers.
@@ -69,12 +63,10 @@ async def search_papers_mcp(topic: str, max_results: int = 5) -> Dict[str, Any]:
     logger.info(f"🔍 SEARCH_PAPERS_MCP llamada - topic: '{topic}', max_results: {max_results}")
     result = search_papers(topic=topic, max_results=max_results)
     logger.info(f"✅ SEARCH_PAPERS_MCP completada - {len(result.get('papers', []))} papers encontrados")
-    langfuse.flush()
     return result
 
 
 @mcp.tool()
-@observe(name="tool-extract-info")
 async def extract_info_mcp(paper_id: str) -> Dict[str, Any]:
     """
     Versión MCP de extract_info.
@@ -84,7 +76,6 @@ async def extract_info_mcp(paper_id: str) -> Dict[str, Any]:
     logger.info(f"📄 EXTRACT_INFO_MCP llamada - paper_id: '{paper_id}'")
     result = extract_info(paper_id=paper_id)
     logger.info(f"✅ EXTRACT_INFO_MCP completada - información extraída para {paper_id}")
-    langfuse.flush()
     return result
 
 
@@ -94,10 +85,7 @@ def main() -> None:
     logger.info("🚀 Iniciando servidor MCP ARXIV...")
     logger.info("📡 Transporte: STDIO (stdin/stdout para protocolo MCP, logs en stderr)")
     logger.info("🔧 Tools disponibles: search_papers_mcp, extract_info_mcp, server_info, who_am_i, analyze_paper_with_confirmation")
-    try:
-        mcp.run(transport="stdio")
-    finally:
-        langfuse.shutdown()
+    mcp.run(transport="stdio")
     logger.info("🛑 Servidor MCP ARXIV detenido")
 
 
@@ -177,7 +165,6 @@ def prompt_analisis_detallado() -> list[base.Message]:
 
 
 @mcp.tool()
-@observe(name="tool-analyze-paper")
 async def analyze_paper_with_confirmation(ctx: Context) -> Dict[str, Any]:
     """
     Ejemplo de elicitation con FastMCP.

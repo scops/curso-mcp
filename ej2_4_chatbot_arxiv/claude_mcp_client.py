@@ -39,18 +39,10 @@ from mcp.client.stdio import stdio_client
 # Configuración básica
 # -----------------------
 
-# 1. Cargar variables de entorno PRIMERO (incluye claves Langfuse)
+# 1. Cargar variables de entorno PRIMERO
 load_dotenv()
 
-# 2. Configurar Langfuse ANTES de importar Anthropic
-#    init_langfuse(instrument_anthropic=True) parchea el SDK de Anthropic para
-#    capturar automáticamente todas las llamadas a la API (modelo, tokens,
-#    latencia), pero SOLO si hay credenciales de Langfuse. Ver langfuse_setup.py.
-from langfuse_setup import init_langfuse, observe, propagate_attributes  # noqa: E402
-
-langfuse = init_langfuse(instrument_anthropic=True)
-
-# 3. Ahora sí importar Anthropic (ya parcheado por el instrumentor)
+# 2. Importar Anthropic
 from anthropic import Anthropic  # noqa: E402
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
@@ -103,7 +95,6 @@ def _serialize_mcp_content(content: Any) -> str | list:
     return str(content)
 
 
-@observe(name="mcp-arxiv-query")
 async def _call_mcp_tools_for_query(
     user_query: str,
     model: str,
@@ -255,7 +246,6 @@ async def _call_mcp_tools_for_query(
         await exit_stack.aclose()
 
 
-@observe(name="arxiv-chat-pipeline")
 def run_claude_with_mcp_tools(
     user_query: str,
     model: str = DEFAULT_MODEL,
@@ -268,25 +258,18 @@ def run_claude_with_mcp_tools(
     Es menos eficiente que mantener la sesión abierta, pero simplifica
     mucho el ejemplo didáctico y evita pelearse con estados globales.
     """
-    # Propagamos user_id y session_id para agrupar trazas en Langfuse.
-    # En un entorno real, el user_id vendría del sistema de autenticación.
-    with propagate_attributes(
-        session_id=st.session_state.get("session_id", "streamlit-session"),
-        tags=["arxiv", "mcp-client"],
-        metadata={"model": model, "max_tokens": max_tokens},
-    ):
-        return asyncio.run(
-            _call_mcp_tools_for_query(
-                user_query=user_query,
-                model=model,
-                max_tokens=max_tokens,
-                # Para mantener el ejemplo sencillo, usamos siempre
-                # el prompt de búsqueda general en arXiv definido en
-                # arxiv_mcp_server.py.
-                prompt_name="general_arxiv_search",
-                prompt_args={},
-            )
+    return asyncio.run(
+        _call_mcp_tools_for_query(
+            user_query=user_query,
+            model=model,
+            max_tokens=max_tokens,
+            # Para mantener el ejemplo sencillo, usamos siempre
+            # el prompt de búsqueda general en arXiv definido en
+            # arxiv_mcp_server.py.
+            prompt_name="general_arxiv_search",
+            prompt_args={},
         )
+    )
 
 
 # -----------------------
@@ -334,9 +317,6 @@ if user_input:
                 answer, _messages = run_claude_with_mcp_tools(user_input)
             except Exception as e:
                 answer = f"Ha ocurrido un error llamando a Claude/MCP: {e}"
-            finally:
-                # Asegurar que las trazas se envían a Langfuse tras cada interacción
-                langfuse.flush()
 
         st.markdown(answer)
 

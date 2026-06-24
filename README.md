@@ -32,6 +32,7 @@ A partir de ahí ejecuta siempre los ejemplos con `uv run …` desde la raíz de
 | `ej7_mcp_rag_db/` | Ejercicio 7 | RAG sobre incidencias + servidor MCP con resources y memoria. | c_tools, c_know (resources), c_mem (feedback persistente). |
 | `ej8_sakila_streaming/` | Ejercicio 8 | Agente de “plataforma de streaming” (sakila + OMDb). | c_tools de lectura/escritura, c_query mixto, MAS (multi-servidor). |
 | `ej9_orquestador/` | Ejercicio 9 | Servidor MCP orquestador que llama a otros MCP. | c_tools de alto nivel, MAS/orquestación MCP→MCP. |
+| `ej12_mcp_token_optimization/` | Extra | Benchmark de tokens vanilla vs MCP-naive vs MCP-optimizado, medido con Langfuse. | Coste en tokens de las definiciones de tools, tool retrieval / progressive disclosure. |
 
 ### Detalle rápido
 
@@ -102,6 +103,16 @@ A partir de ahí ejecuta siempre los ejemplos con `uv run …` desde la raíz de
   - 1–2 tools de búsqueda/listado.
   - 1–2 tools de detalle (por id, por nombre, etc.).
 A partir de ahí, puedes subir el nivel combinando ideas del curso:
+
+#### `ej12_mcp_token_optimization/` (extra)
+- Responde a "¿MCP ahorra tokens?" midiéndolo en vez de afirmarlo: compara vanilla,
+  MCP-naive (vuelca las 14 tools) y MCP-optimizado (filtra a las 3 relevantes).
+- Incluye Langfuse local vía Docker Compose para ver las trazas por estrategia.
+- Ejecuta el benchmark (imprime tabla de tokens; Langfuse es opcional):
+  ```bash
+  uv run python ej12_mcp_token_optimization/benchmark_token_optimization.py
+  ```
+- README completo en `ej12_mcp_token_optimization/README.md`.
 
 ## Tests
 

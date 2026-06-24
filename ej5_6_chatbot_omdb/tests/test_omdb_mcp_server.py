@@ -1,14 +1,21 @@
 import asyncio
 import unittest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from ej5_6_chatbot_omdb import omdb_mcp_server as server
+
+
+# Las tools reciben un `ctx: Context` que FastMCP inyecta en runtime. En los
+# tests las llamamos directamente, así que pasamos un Context simulado: un
+# AsyncMock cuyos métodos async (ctx.info, etc.) no hacen nada.
+def fake_ctx() -> AsyncMock:
+    return AsyncMock()
 
 
 class SearchMoviesTests(unittest.IsolatedAsyncioTestCase):
     async def test_search_movies_rejects_empty_query_after_sanitizing(self) -> None:
         with self.assertRaises(ValueError):
-            await server.search_movies("")
+            await server.search_movies("", ctx=fake_ctx())
 
     async def test_search_movies_formats_items_and_note(self) -> None:
         fake_response = {
@@ -42,7 +49,7 @@ class SearchMoviesTests(unittest.IsolatedAsyncioTestCase):
             return fake_response
 
         with patch.object(server, "_omdb_request", fake_request):
-            result = await server.search_movies("  Ver la película Inception   ", max_results=2)
+            result = await server.search_movies("  Ver la película Inception   ", max_results=2, ctx=fake_ctx())
 
         self.assertIn("Inception", result["query"])
         self.assertEqual(result["total"], 2)
@@ -55,7 +62,7 @@ class SearchMoviesTests(unittest.IsolatedAsyncioTestCase):
 class GetMovieDetailTests(unittest.IsolatedAsyncioTestCase):
     async def test_get_movie_detail_validates_imdb_id(self) -> None:
         with self.assertRaises(ValueError):
-            await server.get_movie_detail("invalid-id")
+            await server.get_movie_detail("invalid-id", ctx=fake_ctx())
 
     async def test_get_movie_detail_returns_formatted_payload(self) -> None:
         fake_detail = {
@@ -91,7 +98,7 @@ class GetMovieDetailTests(unittest.IsolatedAsyncioTestCase):
             return fake_detail
 
         with patch.object(server, "_omdb_request", fake_request):
-            result = await server.get_movie_detail("tt1375666", plot="full")
+            result = await server.get_movie_detail("tt1375666", plot="full", ctx=fake_ctx())
 
         self.assertEqual(result["title"], "Inception")
         self.assertEqual(result["imdb_id"], "tt1375666")

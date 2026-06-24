@@ -6,7 +6,7 @@ import streamlit as st
 from anthropic import Anthropic
 from dotenv import load_dotenv
 from mcp import ClientSession
-from mcp.client.streamable_http import streamablehttp_client
+from mcp.client.streamable_http import streamable_http_client
 
 # ----------------- Configuración -----------------
 
@@ -32,7 +32,7 @@ async def ask_llm_with_mcp(user_query):
 
     Flujo:
     1) Conecta al servidor MCP por HTTP.
-    2) Obtiene tools (search_movies, get_movie_details, ...).
+    2) Obtiene tools (search_movies, get_movie_detail, ...).
     3) Llama a Claude con la pregunta + tools.
     4) Si Claude pide tool_use:
          - llama al tool en el servidor MCP
@@ -41,7 +41,7 @@ async def ask_llm_with_mcp(user_query):
     5) Devuelve respuesta final en texto.
     """
 
-    async with streamablehttp_client(MCP_URL) as (read, write, _get_session_id):
+    async with streamable_http_client(MCP_URL) as (read, write, _get_session_id):
         async with ClientSession(read, write) as session:
             await session.initialize()
 
@@ -158,7 +158,7 @@ Este cliente **no** llama directamente a la API de OMDb.
 
 En su lugar:
 
-1. Se conecta a un **servidor MCP** que expone tools (`search_movies`, `get_movie_details`).
+1. Se conecta a un **servidor MCP** que expone tools (`search_movies`, `get_movie_detail`).
 2. Pasa la descripción de esos tools a un **LLM (Claude)**.
 3. El LLM decide cuándo llamar a cada tool (via MCP) y construye la respuesta final.
 

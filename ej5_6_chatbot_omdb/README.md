@@ -119,7 +119,7 @@ Qué hace:
 - Es una app de **Streamlit** que:
   - Se conecta al servidor MCP vía HTTP con `streamablehttp_client(MCP_URL)`.
   - Crea una `ClientSession` MCP.
-  - Descubre las tools disponibles (`search_movies`, `get_movie_details`, etc.) con `list_tools()`.
+  - Descubre las tools disponibles (`search_movies`, `get_movie_detail`, etc.) con `list_tools()`.
   - Pasa esa lista de tools a Claude (`Anthropic`) como parte de la petición.
   - Implementa el patrón:
 
@@ -145,6 +145,64 @@ Se abrirá una página tipo chat donde puedes preguntar cosas como:
   - Solo sabe que hay tools con cierto nombre y esquema de entrada.
   - “Delegamos” toda la lógica OMDb en el servidor MCP.
 - Cambiar el LLM (modelo, proveedor) no obliga a tocar el servidor OMDb.
+
+### 3.4. Cliente LLM con contexto: `omdb_llm_ctx_client.py`
+
+Archivo: `ej5_6_chatbot_omdb/omdb_llm_ctx_client.py`
+
+Es una evolución de `omdb_llm_client.py` que **mantiene memoria conversacional** (lo
+que en el código llamamos `ctx`).
+
+El problema que resuelve:
+
+- `omdb_llm_client.py` construye la lista `messages` **desde cero** en cada
+  pregunta. Por eso, ante *"dame más info sobre la primera"*, el modelo no sabe a
+  qué te refieres y vuelve a preguntar.
+- `omdb_llm_ctx_client.py` guarda el **historial completo** de la conversación en
+  `st.session_state.ctx` y se lo pasa a Claude en cada turno, así que el modelo
+  recuerda los títulos y resultados anteriores.
+
+Qué es `ctx`:
+
+- Una lista de mensajes en formato de la API de Anthropic que incluye el texto
+  **y** los pasos de herramienta (`tool_use` / `tool_result`). Es la "memoria"
+  que ve el modelo.
+
+Mejoras que aporta (marcadas como comentarios en el código):
+
+1. Las instrucciones del asistente se mueven al parámetro `system` (en lugar de
+   incrustarse en el primer mensaje de usuario), y se le pide al modelo que use
+   el historial para resolver referencias como "la primera" o "esa serie".
+2. El `ctx` persiste en `st.session_state` y se separa de `chat_view` (el texto
+   que se pinta en pantalla).
+3. `trim_ctx()` recorta el historial a los últimos N mensajes para que el
+   contexto no crezca sin límite (gancho con `ej12_mcp_token_optimization`),
+   cuidando no dejar un `tool_result` huérfano.
+
+Cómo lanzarlo (con el servidor ya arrancado):
+
+```bash
+uv run streamlit run ej5_6_chatbot_omdb/omdb_llm_ctx_client.py
+```
+
+Prueba este diálogo para ver la diferencia:
+
+1. "¿Qué películas hay de El Padrino?"
+2. "Dame más info sobre la primera" → con contexto, responde sobre *The
+   Godfather (1972)*; sin contexto, te pide que aclares de qué hablas.
+
+### 3.5. Las tres variantes de cliente
+
+En esta carpeta conviven tres formas de consumir el **mismo** servidor MCP OMDb:
+
+| Archivo | ¿LLM? | ¿Memoria? | Quién orquesta | Qué enseña |
+| --- | --- | --- | --- | --- |
+| `omdb_mcp_client.py` | No | No | El usuario (formularios) | MCP "a pelo": llamar `call_tool` y desempaquetar el `ToolResult` |
+| `omdb_llm_client.py` | Sí | No | El modelo | Integración LLM + MCP (bucle `tool_use` ↔ `tool_result`) |
+| `omdb_llm_ctx_client.py` | Sí | Sí (`ctx`) | El modelo | Lo anterior + contexto conversacional y control de tokens |
+
+La progresión didáctica natural es leerlos en ese orden: primero entiendes el
+protocolo, luego le añades la IA, y por último le das memoria.
 
 ---
 
