@@ -10,14 +10,21 @@ Aquí exponemos tools muy concretas (SQL directo) que devuelven justo
 lo necesario para responder preguntas típicas sobre el catálogo.
 """
 
+import sys
+from pathlib import Path
 from typing import Any, Dict, List
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
+
+# El cliente MCP lanza este script por ruta absoluta (no con `-m`), así que
+# sys.path[0] es esta carpeta, no la raíz del repo. Sin esto, el import de
+# abajo falla con "No module named 'ej8_sakila_streaming'".
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from ej8_sakila_streaming.sakila_db import fetch_all
 
 
-mcp = FastMCP("sakila-simple")
+mcp = MCPServer("sakila-simple")
 
 
 @mcp.tool()

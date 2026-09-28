@@ -3,8 +3,7 @@ import json
 import os
 
 import streamlit as st
-from mcp import ClientSession
-from mcp.client.streamable_http import streamable_http_client
+from mcp import Client
 
 # URL del servidor MCP (puedes sobreescribirla con OMDB_MCP_URL en entorno)
 MCP_URL = os.getenv("OMDB_MCP_URL", "http://127.0.0.1:8000/mcp")
@@ -12,14 +11,14 @@ MCP_URL = os.getenv("OMDB_MCP_URL", "http://127.0.0.1:8000/mcp")
 
 async def _call_mcp_tool_async(tool_name: str, arguments: dict | None = None):
     """
-    Conecta al servidor MCP HTTP, inicializa sesión y llama al tool indicado.
+    Conecta al servidor MCP HTTP y llama al tool indicado.
     Devuelve el objeto ToolResult del SDK MCP.
+    Protocolo 2026-07-28: sin handshake `initialize`, `Client` negocia la
+    versión en cada request (no hay `Mcp-Session-Id`).
     """
-    async with streamable_http_client(MCP_URL) as (read, write, _get_session_id):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            result = await session.call_tool(tool_name, arguments=arguments or {})
-            return result
+    async with Client(MCP_URL) as client:
+        result = await client.call_tool(tool_name, arguments=arguments or {})
+        return result
 
 
 def call_mcp_tool(tool_name: str, arguments: dict | None = None):

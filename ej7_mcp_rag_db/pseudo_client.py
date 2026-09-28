@@ -8,8 +8,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict
 
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+from mcp import Client, StdioServerParameters
 
 
 SERVER_PATH = str(Path(__file__).parent / "rag_mcp_server.py")
@@ -17,10 +16,10 @@ SERVER_PATH = str(Path(__file__).parent / "rag_mcp_server.py")
 
 def _unwrap_rag_content(raw: Any) -> Dict[str, Any]:
     """
-    Adapta el resultado de session.call_tool(...) al dict
+    Adapta el resultado de client.call_tool(...) al dict
     { "answer": ..., "sources": ... } que queremos mostrar.
 
-    FastMCP suele devolver una lista de bloques de contenido
+    El SDK MCP suele devolver una lista de bloques de contenido
     (por ejemplo, TextContent con un JSON en .text), así que
     aquí manejamos los casos típicos.
     """
@@ -28,7 +27,7 @@ def _unwrap_rag_content(raw: Any) -> Dict[str, Any]:
     if isinstance(raw, dict) and "answer" in raw:
         return raw
 
-    # Caso habitual en FastMCP: lista de contenidos
+    # Caso habitual en el SDK MCP: lista de contenidos
     if isinstance(raw, list) and raw:
         first = raw[0]
 
@@ -67,24 +66,16 @@ async def run_single_query(question: str) -> Dict[str, Any]:
             env=dict(os.environ),
         )
 
-        stdio_transport = await exit_stack.enter_async_context(
-            stdio_client(server_params)
-        )
-        stdio, write = stdio_transport
+        client = await exit_stack.enter_async_context(Client(server_params))
 
-        session = await exit_stack.enter_async_context(
-            ClientSession(stdio, write)
-        )
-        await session.initialize()
-
-        tools_resp = await session.list_tools()
+        tools_resp = await client.list_tools()
         print("Tools disponibles en el servidor MCP:")
         for tool in tools_resp.tools:
             print(f"- {tool.name}: {tool.description}")
 
         # Además de tools, este servidor expone resources MCP
         # que sirven para inspeccionar la base de conocimiento.
-        resources_resp = await session.list_resources()
+        resources_resp = await client.list_resources()
         if resources_resp.resources:
             print("\nResources disponibles en el servidor MCP:")
             for res in resources_resp.resources:
@@ -94,7 +85,7 @@ async def run_single_query(question: str) -> Dict[str, Any]:
             # Como ejemplo, leemos el primer resource y mostramos un resumen.
             first_res = resources_resp.resources[0]
             print(f"\nLeyendo el resource: {first_res.uri}")
-            read_result = await session.read_resource(first_res.uri)
+            read_result = await client.read_resource(first_res.uri)
             if read_result.contents:
                 first_content = read_result.contents[0]
                 text = getattr(first_content, "text", None)
@@ -107,7 +98,7 @@ async def run_single_query(question: str) -> Dict[str, Any]:
                 print(snippet)
 
         print("\nLlamando a rag_answer()...")
-        rag_result = await session.call_tool(
+        rag_result = await client.call_tool(
             "rag_answer", {"question": question, "k": 5}
         )
 

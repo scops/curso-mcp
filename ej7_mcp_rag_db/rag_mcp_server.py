@@ -6,7 +6,7 @@ import json
 from datetime import datetime, UTC
 
 import httpx
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 import rag_local
 
@@ -14,7 +14,7 @@ import rag_local
 BASE_DIR = Path(__file__).parent
 FEEDBACK_PATH = BASE_DIR / "feedback.json"
 
-mcp = FastMCP("incidents-rag")
+mcp = MCPServer("incidents-rag")
 
 
 async def _embed_texts(texts: List[str]) -> List[List[float]]:

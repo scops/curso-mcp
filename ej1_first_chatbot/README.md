@@ -33,7 +33,7 @@ En este ejemplo:
 
 ### Servidor MCP: `first_mcp_server.py`
 
-Usa `FastMCP` para levantar un servidor MCP muy pequeño:
+Usa `MCPServer` (SDK `mcp` v2, protocolo 2026-07-28) para levantar un servidor MCP muy pequeño:
 
 - `echo(texto: str) -> str`  
   Devuelve exactamente el mismo texto.  
@@ -60,7 +60,8 @@ Hace tres cosas principales:
 
 1. **Conexión al servidor MCP**
    - Lanza el servidor (`first_mcp_server.py`) usando `StdioServerParameters`.
-   - Crea una `ClientSession` MCP.
+   - Crea un `Client` MCP (protocolo 2026-07-28: sin handshake `initialize`, la
+     negociación de versión va en cada request).
    - Llama a `list_tools()` para descubrir los tools disponibles y los muestra por pantalla.
 
 2. **Uso de Claude con tools MCP**
@@ -70,7 +71,7 @@ Hace tres cosas principales:
      - Responder con texto normal.
      - Pedir que se ejecute un `tool_use`.
    - Si Claude pide un tool, el cliente:
-     - Llama a `session.call_tool(...)` en el servidor.
+     - Llama a `client.call_tool(...)` en el servidor.
      - Añade el resultado como `tool_result` al historial de mensajes.
      - Vuelve a llamar a Claude para que genere una respuesta final usando ese resultado.
 
@@ -89,7 +90,7 @@ Hace tres cosas principales:
 
 Paquetes Python típicos que necesitarás (pueden cambiar según la versión del curso):
 
-- `mcp` y/o `mcp[client]`, `mcp[server]` (o el paquete donde venga `FastMCP`).
+- `mcp>=2.2,<3` (SDK MCP v2, expone `MCPServer` en `mcp.server.mcpserver` y `Client` en `mcp`).
 - `anthropic`
 - `python-dotenv`
 
@@ -295,7 +296,7 @@ En este ejercicio trabajas sobre todo:
 - **c_tools**: definición de tools MCP sencillos (`echo`, `sumar`, `chiste_de_padre`, tu propio tool).
 - **c_state**: separación clara entre cliente y servidor MCP (cada uno con su propio proceso).
 
-Primitivos MCP/FastMCP que aparecen:
+Primitivos MCP que aparecen:
 
-- Servidor MCP por STDIO (`FastMCP(...).run(transport="stdio")`).
+- Servidor MCP por STDIO (`MCPServer(...).run(transport="stdio")`).
 - Cliente MCP que lanza el servidor como subproceso y usa `list_tools()` y `call_tool()` para orquestar las llamadas.

@@ -43,21 +43,18 @@ Archivo principal: `ej5_6_chatbot_omdb/omdb_mcp_server.py`
 
 Qué hace:
 
-- Usa `FastMCP` para crear un servidor MCP llamado `"omdb-tools"`:
+- Usa `MCPServer` (SDK `mcp` v2, protocolo 2026-07-28) para crear un servidor MCP llamado `"omdb-tools"`:
 
   ```python
-  mcp = FastMCP(
-      name="omdb-tools",
-      host="127.0.0.1",
-      port=8000,
-  )
+  mcp = MCPServer(name="omdb-tools")
   ```
 
-- Usa el transporte `streamable-http`:
+- Usa el transporte `streamable-http`. Desde v2, `host`/`port` ya no van en el
+  constructor, se pasan a `.run(...)`:
 
   ```python
   def main() -> None:
-      mcp.run(transport="streamable-http")
+      mcp.run(transport="streamable-http", host="0.0.0.0", port=8000)
   ```
 
 - Expone dos tools principales:
@@ -110,6 +107,13 @@ En la UI del inspector:
   - Prueba a llamar a `search_movies` con un título simple.
   - Mira cómo responde el servidor (estructura de JSON, campos devueltos, mensajes de error, etc.).
 
+**Nota sobre el protocolo:** con el SDK `mcp` v2 (protocolo 2026-07-28, sin
+sesión) la conexión ya NO debería aparecer marcada como "legacy" en el
+Inspector — esa etiqueta solo sale con servidores que aún hablan el protocolo
+antiguo (handshake `initialize` + cabecera `Mcp-Session-Id`). Si en clase
+alguien usa un `mcp` anterior a la v2, seguirá viendo "legacy": no es un
+error, es que ese servidor concreto aún no ha migrado.
+
 ### 3.2. Cliente LLM: `omdb_llm_client.py`
 
 Archivo principal: `ej5_6_chatbot_omdb/omdb_llm_client.py`
@@ -117,14 +121,14 @@ Archivo principal: `ej5_6_chatbot_omdb/omdb_llm_client.py`
 Qué hace:
 
 - Es una app de **Streamlit** que:
-  - Se conecta al servidor MCP vía HTTP con `streamablehttp_client(MCP_URL)`.
-  - Crea una `ClientSession` MCP.
+  - Se conecta al servidor MCP vía HTTP con `Client(MCP_URL)` (SDK v2 — sin
+    handshake `initialize`, sin `ClientSession` por separado).
   - Descubre las tools disponibles (`search_movies`, `get_movie_detail`, etc.) con `list_tools()`.
   - Pasa esa lista de tools a Claude (`Anthropic`) como parte de la petición.
   - Implementa el patrón:
 
     1. Claude responde con texto o con `tool_use`.
-    2. Si hay `tool_use`, el cliente llama al servidor MCP (`session.call_tool(...)`).
+    2. Si hay `tool_use`, el cliente llama al servidor MCP (`client.call_tool(...)`).
     3. Convierte el resultado en `tool_result` y se lo devuelve al modelo.
     4. El modelo responde al usuario usando esos datos.
 
@@ -231,8 +235,8 @@ En los ejercicios 5 y 6 trabajas principalmente:
 - **c_tools**: tools MCP reales sobre una API HTTP externa (`search_movies`, `get_movie_detail`).
 - **c_query**: transporte `streamable-http`, donde la query del usuario viaja como JSON-RPC a un servidor MCP HTTP.
 
-Primitivos MCP/FastMCP que aparecen:
+Primitivos MCP que aparecen:
 
-- Servidor MCP HTTP con `FastMCP(...).run(transport="streamable-http")`.
+- Servidor MCP HTTP con `MCPServer(...).run(transport="streamable-http", ...)`.
 - Tools MCP (`@mcp.tool()`) que envuelven llamadas a OMDb con `httpx`.
-- Integración con MCP Inspector (`tools/list`, `tools/call`) y con un cliente LLM en Streamlit que usa `ClientSession` sobre HTTP.
+- Integración con MCP Inspector (`tools/list`, `tools/call`) y con un cliente LLM en Streamlit que usa `Client` sobre HTTP.

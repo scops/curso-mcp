@@ -11,8 +11,7 @@ import json
 import streamlit as st
 from anthropic import Anthropic
 from dotenv import load_dotenv
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+from mcp import Client, StdioServerParameters
 
 
 load_dotenv()
@@ -36,18 +35,13 @@ anthropic_client = Anthropic(api_key=ANTHROPIC_API_KEY)
 SERVER_PATH = str(Path(__file__).parent / "sakila_mcp_server.py")
 
 
-async def _open_mcp_session(exit_stack: AsyncExitStack) -> ClientSession:
+async def _open_mcp_session(exit_stack: AsyncExitStack) -> Client:
     server_params = StdioServerParameters(
         command=os.getenv("PYTHON_EXECUTABLE", sys.executable),
         args=[SERVER_PATH],
         env=None,
     )
-    stdio_transport = await exit_stack.enter_async_context(stdio_client(server_params))
-    stdio, write = stdio_transport
-
-    session = await exit_stack.enter_async_context(ClientSession(stdio, write))
-    await session.initialize()
-    return session
+    return await exit_stack.enter_async_context(Client(server_params))
 
 
 async def ask_llm_with_mcp(user_query: str) -> str:
@@ -62,14 +56,14 @@ async def ask_llm_with_mcp(user_query: str) -> str:
     exit_stack = AsyncExitStack()
 
     try:
-        session = await _open_mcp_session(exit_stack)
+        client = await _open_mcp_session(exit_stack)
 
-        tools_response = await session.list_tools()
+        tools_response = await client.list_tools()
         available_tools: List[Dict[str, Any]] = [
             {
                 "name": tool.name,
                 "description": tool.description,
-                "input_schema": tool.inputSchema,
+                "input_schema": tool.input_schema,
             }
             for tool in tools_response.tools
         ]
@@ -107,7 +101,7 @@ async def ask_llm_with_mcp(user_query: str) -> str:
                 tool_args = tool_call.input
                 tool_id = tool_call.id
 
-                result = await session.call_tool(tool_name, tool_args)
+                result = await client.call_tool(tool_name, tool_args)
 
                 # Para simplificar, convertimos el resultado en string para el modelo.
                 if hasattr(result, "model_dump"):
@@ -198,8 +192,8 @@ de los resultados de estos tools en clase.
         async def _fetch_rating_data() -> Dict[str, Any]:
             exit_stack = AsyncExitStack()
             try:
-                session = await _open_mcp_session(exit_stack)
-                result = await session.call_tool("get_rating_distribution", {})
+                client = await _open_mcp_session(exit_stack)
+                result = await client.call_tool("get_rating_distribution", {})
                 # result.content es una lista de bloques TextContent; extraemos el JSON del primero
                 content = getattr(result, "content", result)
                 if isinstance(content, list) and content:

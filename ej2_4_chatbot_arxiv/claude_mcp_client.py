@@ -9,8 +9,7 @@ from typing import Any, Dict, List, Tuple
 
 import streamlit as st
 from dotenv import load_dotenv
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+from mcp import Client, StdioServerParameters
 
 # -------------------------------------------------------------------
 # Versión "con MCP" del chatbot arXiv.
@@ -26,7 +25,7 @@ from mcp.client.stdio import stdio_client
 # - Aquí dejamos que el cliente MCP descubra las tools del servidor
 #   con list_tools(), y se las pasamos a Claude.
 #
-# Esto responde a la pregunta "¿qué gano con FastMCP si ya funcionaba
+# Esto responde a la pregunta "¿qué gano con un servidor MCP si ya funcionaba
 # el ejemplo anterior?":
 # - Separas la lógica de tools en un servidor reutilizable.
 # - Cualquier cliente MCP (no solo esta app) puede descubrir y usar
@@ -119,23 +118,19 @@ async def _call_mcp_tools_for_query(
             env=None,
         )
 
-        stdio_transport = await exit_stack.enter_async_context(
-            stdio_client(server_params)
+        # OJO: lo llamamos `mcp_client` (no `client`) porque `client` ya está
+        # usado más abajo para el cliente Anthropic global.
+        mcp_client = await exit_stack.enter_async_context(
+            Client(server_params)
         )
-        stdio, write = stdio_transport
-
-        session = await exit_stack.enter_async_context(
-            ClientSession(stdio, write)
-        )
-        await session.initialize()
 
         # Descubrimos las tools MCP del servidor
-        tools_response = await session.list_tools()
+        tools_response = await mcp_client.list_tools()
         mcp_tools = [
             {
                 "name": tool.name,
                 "description": tool.description,
-                "input_schema": tool.inputSchema,
+                "input_schema": tool.input_schema,
             }
             for tool in tools_response.tools
         ]
@@ -146,7 +141,7 @@ async def _call_mcp_tools_for_query(
         # como mensaje de sistema/inicio de la conversación.
         if prompt_name:
             try:
-                prompt_result = await session.get_prompt(
+                prompt_result = await mcp_client.get_prompt(
                     name=prompt_name,
                     arguments=prompt_args or {},
                 )
@@ -221,7 +216,7 @@ async def _call_mcp_tools_for_query(
                 tool_id = tool_call.id
 
                 # Sesión MCP ejecuta el tool en el servidor
-                result = await session.call_tool(tool_name, tool_input)
+                result = await mcp_client.call_tool(tool_name, tool_input)
 
                 # Pasamos el contenido serializado al modelo.
                 # El result.content puede contener objetos del SDK MCP que necesitan conversión

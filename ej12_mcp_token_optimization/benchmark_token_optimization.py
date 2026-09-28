@@ -42,8 +42,7 @@ from langfuse_setup import init_langfuse, observe, propagate_attributes  # noqa:
 langfuse = init_langfuse(instrument_anthropic=True)
 
 from anthropic import Anthropic  # noqa: E402
-from mcp import ClientSession, StdioServerParameters  # noqa: E402
-from mcp.client.stdio import stdio_client  # noqa: E402
+from mcp import Client, StdioServerParameters  # noqa: E402
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 if not ANTHROPIC_API_KEY:
@@ -266,22 +265,20 @@ async def main() -> None:
             args=[SERVER_PATH],
             env=None,
         )
-        stdio, write = await exit_stack.enter_async_context(stdio_client(server_params))
-        session = await exit_stack.enter_async_context(ClientSession(stdio, write))
-        await session.initialize()
+        mcp_client = await exit_stack.enter_async_context(Client(server_params))
 
-        tools_response = await session.list_tools()
+        tools_response = await mcp_client.list_tools()
         all_mcp_tools = [
             {
                 "name": t.name,
                 "description": t.description,
-                "input_schema": t.inputSchema,
+                "input_schema": t.input_schema,
             }
             for t in tools_response.tools
         ]
 
         async def execute_mcp(name: str, args: Dict[str, Any]) -> str:
-            result = await session.call_tool(name, args)
+            result = await mcp_client.call_tool(name, args)
             return _serialize_mcp(result.content)
 
         print(f"Catálogo MCP descubierto: {len(all_mcp_tools)} tools")

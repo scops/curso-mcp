@@ -7,9 +7,8 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List
 
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
-from mcp.server.fastmcp import FastMCP
+from mcp import Client, StdioServerParameters
+from mcp.server.mcpserver import MCPServer
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -19,7 +18,7 @@ RAG_SERVER_PATH = BASE_DIR / "ej7_mcp_rag_db" / "rag_mcp_server.py"
 
 CALL_TIMEOUT_SECONDS = 20
 
-mcp = FastMCP("orchestrator")
+mcp = MCPServer("orchestrator")
 
 
 def _choose_arxiv_topic(incident_question: str, explicit_topic: str | None) -> str:
@@ -54,7 +53,7 @@ async def _call_remote_tool_stdio(
     """
     Lanza un servidor MCP por STDIO y llama a uno de sus tools.
 
-    Devuelve el `structuredContent` del CallToolResult, o un dict vacío
+    Devuelve el `structured_content` del CallToolResult, o un dict vacío
     si no hubiera contenido estructurado.
     """
     exit_stack = AsyncExitStack()
@@ -65,14 +64,10 @@ async def _call_remote_tool_stdio(
             args=[str(server_path)],
             env=None,
         )
-        transport = await exit_stack.enter_async_context(stdio_client(params))
-        stdio, write = transport
+        client = await exit_stack.enter_async_context(Client(params))
 
-        session = await exit_stack.enter_async_context(ClientSession(stdio, write))
-        await session.initialize()
-
-        result = await session.call_tool(tool_name, arguments)
-        return result.structuredContent or {}
+        result = await client.call_tool(tool_name, arguments)
+        return result.structured_content or {}
     finally:
         await exit_stack.aclose()
 

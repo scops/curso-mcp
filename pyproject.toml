@@ -8,8 +8,8 @@ dependencies = [
   # Dependencias comunes a la mayoría de ejercicios
   "anthropic>=0.40.0",
   "python-dotenv>=1.2.2",
-  # SDK MCP (ajusta el nombre/versión según el curso)
-  "mcp>=1.28",
+  # SDK MCP (protocolo 2026-07-28, stateless)
+  "mcp>=2.2,<3",
   # Herramientas usadas en algunos ejercicios
   "streamlit>=1.38.0",
   "arxiv>=1.4.8",
@@ -17,11 +17,13 @@ dependencies = [
   "httpx>=0.27.0",
   # Cliente MySQL para el ejercicio 8 (sakila)
   "mysql-connector-python>=8.0.0",
-  # Integración LangChain + MCP para el ejercicio 11.
-  # Nota: 0.3.0 importa `streamable_http_client`, que el SDK `mcp` 1.23
-  # expone como `streamablehttp_client`; se fija <0.3.0 hasta que upstream
-  # lo corrija.
-  "langchain-mcp-adapters>=0.2.0,<0.3.0",
+  # Integración LangChain + MCP para el ejercicio 11 (extra/avanzado, no
+  # forma parte del temario principal). `langchain-mcp-adapters` todavía
+  # fija `mcp<2.0.0`, incompatible con el resto del curso (mcp v2), así que
+  # usamos el soporte nuevo integrado en LangChain (`langchain.mcp`), que
+  # SÍ soporta mcp v2 pero está en beta (API sujeta a cambios; revisar antes
+  # de cada edición del curso).
+  "langchain[mcp]>=1.4.0",
   # Stack LangChain/SQL agent para el ejercicio 11
   "langchain-community>=0.4.2",
   "langchain-anthropic>=0.3.22",

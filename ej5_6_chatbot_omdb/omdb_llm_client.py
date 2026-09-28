@@ -5,8 +5,7 @@ import os
 import streamlit as st
 from anthropic import Anthropic
 from dotenv import load_dotenv
-from mcp import ClientSession
-from mcp.client.streamable_http import streamable_http_client
+from mcp import Client
 
 # ----------------- Configuración -----------------
 
@@ -41,99 +40,96 @@ async def ask_llm_with_mcp(user_query):
     5) Devuelve respuesta final en texto.
     """
 
-    async with streamable_http_client(MCP_URL) as (read, write, _get_session_id):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-
-            # 1) Descubrimos tools en el servidor MCP
-            tools_response = await session.list_tools()
-            available_tools = []
-            for tool in tools_response.tools:
-                available_tools.append(
-                    {
-                        "name": tool.name,
-                        "description": tool.description,
-                        "input_schema": tool.inputSchema,
-                    }
-                )
-
-            # 2) Mensajes iniciales para Claude
-            messages = [
+    async with Client(MCP_URL) as client:
+        # 1) Descubrimos tools en el servidor MCP
+        tools_response = await client.list_tools()
+        available_tools = []
+        for tool in tools_response.tools:
+            available_tools.append(
                 {
-                    "role": "user",
-                    "content": (
-                        "Eres un asistente experto en cine y series.\n"
-                        "Tienes acceso a herramientas que consultan la API de OMDb.\n"
-                        "Cuando necesites datos concretos (títulos, años, reparto, sinopsis), "
-                        "usa esas herramientas y luego responde en español, "
-                        "de forma clara y breve.\n\n"
-                        f"Pregunta del usuario: {user_query}"
-                    ),
+                    "name": tool.name,
+                    "description": tool.description,
+                    "input_schema": tool.input_schema,
                 }
-            ]
+            )
 
-            # Bucle de hasta 3 pasos herramienta -> respuesta final
-            for _ in range(3):
-                response = llm_client.messages.create(
-                    model=ANTHROPIC_MODEL,
-                    max_tokens=800,
-                    messages=messages,
-                    tools=available_tools,
+        # 2) Mensajes iniciales para Claude
+        messages = [
+            {
+                "role": "user",
+                "content": (
+                    "Eres un asistente experto en cine y series.\n"
+                    "Tienes acceso a herramientas que consultan la API de OMDb.\n"
+                    "Cuando necesites datos concretos (títulos, años, reparto, sinopsis), "
+                    "usa esas herramientas y luego responde en español, "
+                    "de forma clara y breve.\n\n"
+                    f"Pregunta del usuario: {user_query}"
+                ),
+            }
+        ]
+
+        # Bucle de hasta 3 pasos herramienta -> respuesta final
+        for _ in range(3):
+            response = llm_client.messages.create(
+                model=ANTHROPIC_MODEL,
+                max_tokens=800,
+                messages=messages,
+                tools=available_tools,
+            )
+
+            tool_uses = [c for c in response.content if c.type == "tool_use"]
+            text_blocks = [c for c in response.content if c.type == "text"]
+
+            # 3) Si no hay tool_use, devolvemos el texto directamente
+            if not tool_uses:
+                final_text = "\n\n".join(tb.text for tb in text_blocks) if text_blocks else ""
+                if final_text:
+                    messages.append({"role": "assistant", "content": final_text})
+                return final_text
+
+            # 4) Hay tool_use: añadimos el mensaje del assistant con esos tool_use
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": response.content,
+                }
+            )
+
+            # 5) Ejecutamos cada tool en el servidor MCP
+            for tu in tool_uses:
+                tool_name = tu.name
+                tool_args = tu.input
+                tool_id = tu.id
+
+                # Llamada al servidor MCP
+                tool_result = await client.call_tool(tool_name, tool_args)
+
+                # Convertimos el resultado en JSON de texto para Claude
+                if hasattr(tool_result, "model_dump"):
+                    tool_payload = tool_result.model_dump(mode="json")
+                else:
+                    tool_payload = {"raw_result": str(tool_result)}
+
+                tool_result_text = json.dumps(
+                    tool_payload, ensure_ascii=False, indent=2
                 )
 
-                tool_uses = [c for c in response.content if c.type == "tool_use"]
-                text_blocks = [c for c in response.content if c.type == "text"]
-
-                # 3) Si no hay tool_use, devolvemos el texto directamente
-                if not tool_uses:
-                    final_text = "\n\n".join(tb.text for tb in text_blocks) if text_blocks else ""
-                    if final_text:
-                        messages.append({"role": "assistant", "content": final_text})
-                    return final_text
-
-                # 4) Hay tool_use: añadimos el mensaje del assistant con esos tool_use
+                # 6) Añadimos un mensaje de tipo tool_result para Claude
                 messages.append(
                     {
-                        "role": "assistant",
-                        "content": response.content,
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": tool_id,
+                                "content": tool_result_text,
+                            }
+                        ],
                     }
                 )
 
-                # 5) Ejecutamos cada tool en el servidor MCP
-                for tu in tool_uses:
-                    tool_name = tu.name
-                    tool_args = tu.input
-                    tool_id = tu.id
-
-                    # Llamada al servidor MCP
-                    tool_result = await session.call_tool(tool_name, tool_args)
-
-                    # Convertimos el resultado en JSON de texto para Claude
-                    if hasattr(tool_result, "model_dump"):
-                        tool_payload = tool_result.model_dump(mode="json")
-                    else:
-                        tool_payload = {"raw_result": str(tool_result)}
-
-                    tool_result_text = json.dumps(
-                        tool_payload, ensure_ascii=False, indent=2
-                    )
-
-                    # 6) Añadimos un mensaje de tipo tool_result para Claude
-                    messages.append(
-                        {
-                            "role": "user",
-                            "content": [
-                                {
-                                    "type": "tool_result",
-                                    "tool_use_id": tool_id,
-                                    "content": tool_result_text,
-                                }
-                            ],
-                        }
-                    )
-
-            # Si llega aquí, demasiados pasos sin texto final claro
-            return "He usado varias herramientas pero no he obtenido una respuesta clara. Intenta reformular tu pregunta."
+        # Si llega aquí, demasiados pasos sin texto final claro
+        return "He usado varias herramientas pero no he obtenido una respuesta clara. Intenta reformular tu pregunta."
 
 
 def ask_llm_with_mcp_sync(user_query):

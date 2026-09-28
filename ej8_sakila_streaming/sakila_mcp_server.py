@@ -7,7 +7,7 @@ import sys
 
 import httpx
 from dotenv import load_dotenv
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 try:
     # Caso habitual: ejecutado como módulo del paquete ej8_sakila_streaming
@@ -27,7 +27,7 @@ if not OMDB_API_KEY:
 
 OMDB_BASE_URL = "https://www.omdbapi.com/"
 
-mcp = FastMCP("sakila-streaming")
+mcp = MCPServer("sakila-streaming")
 
 
 async def _omdb_request(params: Dict[str, Any]) -> Dict[str, Any]:

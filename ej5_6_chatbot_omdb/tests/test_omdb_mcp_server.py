@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 from ej5_6_chatbot_omdb import omdb_mcp_server as server
 
 
-# Las tools reciben un `ctx: Context` que FastMCP inyecta en runtime. En los
+# Las tools reciben un `ctx: Context` que el SDK MCP inyecta en runtime. En los
 # tests las llamamos directamente, así que pasamos un Context simulado: un
 # AsyncMock cuyos métodos async (ctx.info, etc.) no hacen nada.
 def fake_ctx() -> AsyncMock:

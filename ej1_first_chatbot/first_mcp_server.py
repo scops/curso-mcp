@@ -1,9 +1,9 @@
 import random
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 # Creamos la instancia del servidor MCP
 # El nombre "first-tools" es cómo se verá desde el cliente.
-mcp = FastMCP("first-tools")
+mcp = MCPServer("first-tools")
 
 
 @mcp.tool()

@@ -6,97 +6,71 @@ Cliente LangChain + MCP para sakila-simple.
 Este módulo ilustra el enfoque "MCP tool-driven":
 
 - Levanta el servidor MCP `sakila-simple` por STDIO.
-- Usa `langchain-mcp-adapters` para exponer sus tools como herramientas de LangChain.
-- Construye un agente que decide qué tool usar (por ejemplo, buscar por título
-  o por categoría) y devuelve una respuesta al usuario.
+- Usa `langchain.mcp.MCPAdapter` (integración MCP nueva de LangChain,
+  BETA — requiere `langchain[mcp]>=1.4.0`) para exponer sus tools como
+  herramientas de LangChain.
+- Construye un agente (`create_agent`) que decide qué tool usar (por
+  ejemplo, buscar por título o por categoría) y devuelve una respuesta
+  al usuario.
 
-En el benchmarking del ejercicio, compararemos este enfoque con el RAG de
+NOTA (curso): este ejercicio es EXTRA/avanzado, no forma parte del temario
+principal de protocolo MCP. `langchain.mcp` está en beta y su API puede
+cambiar; revisa https://docs.langchain.com/oss/python/langchain/mcp antes
+de cada edición del curso por si ha cambiado.
+
+En el benchmarking del ejercicio, comparamos este enfoque con el RAG de
 `sakila_rag_client.rag_answer`.
 """
 
 import asyncio
 import os
-import sys
-from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any
 
 from dotenv import load_dotenv
+from langchain.agents import create_agent
+from langchain.mcp import MCPAdapter
 from langchain_anthropic import ChatAnthropic
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import Runnable, RunnablePassthrough
-from langchain_mcp_adapters.tools import load_mcp_tools
-from mcp.client.session import ClientSession
-from mcp.client.stdio import StdioServerParameters, stdio_client
 
 
 load_dotenv()
 
-
 ROOT_DIR = Path(__file__).resolve().parents[1]
+SERVER_PATH = ROOT_DIR / "ej11_rag_vs_mcp_sakila" / "sakila_simple_mcp_server.py"
 
+MODEL = os.getenv("MODEL", "claude-haiku-4-5")
 
-@asynccontextmanager
-async def _sakila_session() -> ClientSession:
-    """
-    Crea una sesión MCP por STDIO levantando el servidor sakila-simple.
-    """
-    server_path = ROOT_DIR / "ej11_rag_vs_mcp_sakila" / "sakila_simple_mcp_server.py"
-
-    async with stdio_client(
-        StdioServerParameters(
-            command=os.getenv("PYTHON_EXECUTABLE", sys.executable),
-            args=[str(server_path)],
-            cwd=str(ROOT_DIR),
-        )
-    ) as (read_stream, write_stream):
-        session = ClientSession(read_stream, write_stream)
-        try:
-            yield session
-        finally:
-            await session.close()
-
-
-async def _build_agent() -> Runnable:
-    """
-    Construye un agente LangChain que utiliza las tools MCP de sakila-simple.
-    """
-    async with _sakila_session() as session:
-        await session.initialize()
-        tools = await load_mcp_tools(session)
-
-    llm = ChatAnthropic(model="claude-haiku-4-5")
-
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            (
-                "system",
-                (
-                    "Eres un asistente de recomendaciones de cine que usa herramientas MCP "
-                    "para consultar la base de datos sakila.\n\n"
-                    "Usa las herramientas disponibles para:\n"
-                    "- Buscar películas por título parcial.\n"
-                    "- Obtener películas por categoría.\n"
-                    "- Consultar detalles de una película concreta.\n\n"
-                    "Devuelve respuestas concisas y al grano, citando títulos y años "
-                    "cuando sea relevante."
-                ),
-            ),
-            ("human", "{input}"),
-        ]
-    )
-
-    chain: Runnable = prompt | llm.bind_tools(tools)
-    return chain
+SYSTEM_PROMPT = (
+    "Eres un asistente de recomendaciones de cine que usa herramientas MCP "
+    "para consultar la base de datos sakila.\n\n"
+    "Usa las herramientas disponibles para:\n"
+    "- Buscar películas por título parcial.\n"
+    "- Obtener películas por categoría.\n"
+    "- Consultar detalles de una película concreta.\n\n"
+    "Devuelve respuestas concisas y al grano, citando títulos y años "
+    "cuando sea relevante."
+)
 
 
 async def mcp_answer_async(question: str) -> str:
     """
     Ejecuta el agente MCP+LangChain para una pregunta concreta.
+
+    `MCPAdapter(Path(...))` lanza el servidor MCP como subproceso STDIO
+    (usando el mismo intérprete Python, vía `sys.executable`), descubre
+    sus tools con `list_tools()` y las adapta a tools de LangChain.
     """
-    chain = await _build_agent()
-    result = await chain.ainvoke({"input": question})
-    return result.content if hasattr(result, "content") else str(result)
+    async with MCPAdapter(SERVER_PATH) as adapter:
+        tools = await adapter.list_tools()
+
+        llm = ChatAnthropic(model=MODEL)
+        agent = create_agent(llm, tools, system_prompt=SYSTEM_PROMPT)
+
+        result = await agent.ainvoke(
+            {"messages": [{"role": "user", "content": question}]}
+        )
+
+    final_message = result["messages"][-1]
+    return getattr(final_message, "content", str(final_message))
 
 
 def mcp_answer(question: str) -> str:

@@ -88,13 +88,13 @@ No necesitas lanzar el servidor aparte: `app_con_mcp.py` arranca internamente
   - Cuando Claude manda un `tool_use`, el código llama directamente a las funciones Python locales.
 
 - **Ahora (`claude_mcp_client.py`, con MCP):**
-  - Las funciones de herramientas se exponen en `arxiv_mcp_server.py` como tools MCP usando `FastMCP`.
+  - Las funciones de herramientas se exponen en `arxiv_mcp_server.py` como tools MCP usando `MCPServer`.
   - `claude_mcp_client.py` se comporta como **cliente MCP**:
     - Lanza `arxiv_mcp_server.py` como servidor MCP.
     - Llama a `list_tools()` para descubrir qué tools hay y qué esquemas de entrada tienen.
     - Cuando Claude manda un `tool_use`, le pide al servidor MCP que ejecute el tool (no llama a funciones locales).
 
-### ¿Qué gano con FastMCP si ya funcionaba la versión sin MCP?
+### ¿Qué gano con un servidor MCP si ya funcionaba la versión sin MCP?
 
 Este es justo el objetivo didáctico del ejercicio:
 
@@ -124,7 +124,7 @@ En resumen: la versión sin MCP te enseña el patrón básico “LLM + tools loc
 
 ### 4.1. Prompts MCP e instrucciones de sistema
 
-Además de las tools, en `arxiv_mcp_server.py` usamos los **prompts** de FastMCP para exponer
+Además de las tools, en `arxiv_mcp_server.py` usamos los **prompts** del SDK MCP para exponer
 plantillas reutilizables que representan “modos de uso” del servidor:
 
 - El servidor tiene unas **instrucciones generales** (`mcp.instructions`) que describen su rol:
@@ -264,9 +264,9 @@ En estos ejercicios de arXiv trabajas principalmente:
 - **c_instr**: instrucciones de sistema y prompts MCP (`mcp.instructions`, `general_arxiv_search`, `detailed_paper_analysis`).
 - **c_state**: introspección básica del servidor (`server_info`, `who_am_i`) para ver su configuración.
 
-Primitivos MCP/FastMCP que aparecen:
+Primitivos MCP que aparecen:
 
-- Servidor MCP por STDIO (`FastMCP("arxiv-tools", ...)`).
+- Servidor MCP por STDIO (`MCPServer("arxiv-tools", ...)`).
 - Tools MCP (`@mcp.tool()`).
 - Prompts MCP (`@mcp.prompt(...)`) y uso de `session.get_prompt(...)` desde el cliente.
-- Cliente MCP (`ClientSession`) que usa `list_tools()` y `call_tool()` para orquestar las llamadas desde Streamlit.
+- Cliente MCP (`Client`) que usa `list_tools()` y `call_tool()` para orquestar las llamadas desde Streamlit.

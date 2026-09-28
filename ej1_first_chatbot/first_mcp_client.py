@@ -3,8 +3,7 @@ import sys
 from typing import Optional, List, Dict
 from contextlib import AsyncExitStack
 
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+from mcp import Client, StdioServerParameters
 
 import os
 from anthropic import Anthropic
@@ -29,7 +28,7 @@ class MCPChatClient:
     """
 
     def __init__(self) -> None:
-        self.session: Optional[ClientSession] = None
+        self.client: Optional[Client] = None
         self.exit_stack = AsyncExitStack()
         # El SDK de Anthropic lee ANTHROPIC_API_KEY del entorno
         self.anthropic = Anthropic()
@@ -48,20 +47,15 @@ class MCPChatClient:
             env=None,
         )
 
-        # Abrimos transporte stdio → servidor MCP
-        stdio_transport = await self.exit_stack.enter_async_context(
-            stdio_client(server_params)
+        # Abrimos el cliente MCP (lanza el servidor como subproceso por STDIO).
+        # En el protocolo 2026-07-28 ya no hay handshake `initialize`: el
+        # propio `Client` negocia la versión de protocolo en cada request.
+        self.client = await self.exit_stack.enter_async_context(
+            Client(server_params)
         )
-        self.stdio, self.write = stdio_transport
-
-        # Creamos sesión MCP
-        self.session = await self.exit_stack.enter_async_context(
-            ClientSession(self.stdio, self.write)
-        )
-        await self.session.initialize()
 
         # Listamos tools disponibles
-        response = await self.session.list_tools()
+        response = await self.client.list_tools()
         tools = response.tools
         print("\nConectado al servidor MCP con tools:")
         for tool in tools:
@@ -71,8 +65,8 @@ class MCPChatClient:
         """
         Procesa una consulta usando Claude + tools MCP.
         """
-        if self.session is None:
-            raise RuntimeError("Sesión MCP no inicializada.")
+        if self.client is None:
+            raise RuntimeError("Cliente MCP no conectado.")
 
         # Mensajes iniciales para el LLM
         messages: List[Dict] = [
@@ -83,12 +77,12 @@ class MCPChatClient:
         ]
 
         # Obtenemos el catálogo de tools desde el servidor MCP
-        tools_response = await self.session.list_tools()
+        tools_response = await self.client.list_tools()
         available_tools = [
             {
                 "name": tool.name,
                 "description": tool.description,
-                "input_schema": tool.inputSchema,
+                "input_schema": tool.input_schema,
             }
             for tool in tools_response.tools
         ]
@@ -117,11 +111,11 @@ class MCPChatClient:
                 tool_args = content.input
 
                 # Ejecutamos el tool en el servidor MCP
-                result = await self.session.call_tool(tool_name, tool_args)
+                result = await self.client.call_tool(tool_name, tool_args)
 
-                # Añadimos trazas mínimas
+                # Añadimos trazas visuales claras para la terminal
                 final_text_parts.append(
-                    f"[Llamando al tool {tool_name} con args {tool_args}]"
+                    f"\n[⚙️  Llamando al tool '{tool_name}' con args: {tool_args}]\n"
                 )
 
                 # Construimos el flujo de mensajes para la siguiente llamada
@@ -160,7 +154,11 @@ class MCPChatClient:
                     tools=available_tools,
                 )
 
-                # Asumimos que ahora viene texto final
+                # Asumimos que ahora viene texto final.
+                # NOTA PEDAGÓGICA: En un bot de producción, esto sería un bucle (while)
+                # porque el modelo podría decidir llamar a un segundo tool después del primero.
+                # Para este primer ejercicio, lo limitamos a un único "viaje" (ida y vuelta)
+                # para que el flujo lineal sea más fácil de leer.
                 for c2 in response.content:
                     if c2.type == "text":
                         final_text_parts.append(c2.text)

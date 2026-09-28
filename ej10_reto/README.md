@@ -26,7 +26,7 @@ Piensa en **qué tipo de preguntas** querrías poder hacer con MCP sobre esa API
 
 Diseñar un **servidor MCP propio** para esa API, con la complejidad que tú quieras. La versión básica puede ser:
 
-- Un servidor `FastMCP` con:
+- Un servidor `MCPServer` con:
   - 1–2 tools de búsqueda/listado.
   - 1–2 tools de detalle (por id, por nombre, etc.).
 
@@ -61,7 +61,7 @@ No hace falta incluirlo TODO; la idea es que elijas qué piezas quieres practica
 
 Para que el reto sea “entregable” en el contexto del curso, te propongo estos mínimos:
 
-1. Un servidor MCP con `FastMCP` (STDIO o HTTP).
+1. Un servidor MCP con `MCPServer` (STDIO o HTTP).
 2. Al menos **dos tools** bien documentadas:
    - Una de búsqueda o listado.
    - Una de detalle/acción.

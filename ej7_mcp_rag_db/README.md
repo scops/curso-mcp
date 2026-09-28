@@ -65,7 +65,7 @@ Dentro de `ej7_mcp_rag_db/` tienes:
     - Responder preguntas usando RAG (`answer(question: str, k: int = 5)`).
 
 - `rag_mcp_server.py`  
-  Envuelve la lógica de `rag_local.py` en un **servidor MCP** usando `FastMCP`:
+  Envuelve la lógica de `rag_local.py` en un **servidor MCP** usando `MCPServer`:
   - Tool `index_tickets()` → reconstruye el índice de embeddings.
   - Tool `rag_answer(question: str, k: int = 5)` → ejecuta el pipeline RAG y devuelve `answer + sources`.
 
@@ -142,7 +142,7 @@ uv run python ej7_mcp_rag_db/rag_mcp_server.py
 
 Este script:
 
-- Crea un servidor MCP `incidents-rag` usando `FastMCP`.
+- Crea un servidor MCP `incidents-rag` usando `MCPServer`.
 - Usa transporte `stdio` (el servidor lee/escribe por la entrada/salida estándar).
 - Registra dos tools:
   - `index_tickets()` → llama a `rag_local.build_index()` y devuelve cuántos tickets se indexan.
@@ -192,7 +192,7 @@ Si trabajas con un host como Claude Desktop, ChatGPT con MCP, Open WebUI u otro:
    - “Tenemos timeouts en el panel de administración después de un despliegue, ¿alguna pista?”
 
 El host verá las tools `index_tickets` y `rag_answer` y decidirá cuándo usarlas para mejorar la respuesta.
-Además, gracias a FastMCP, también exponemos **resources** de solo lectura:
+Además, gracias al SDK MCP, también exponemos **resources** de solo lectura:
 
 - `tickets/latest` → devuelve los últimos tickets insertados (sin pasar por el modelo).
 - `tickets/{ticket_id}` → devuelve el detalle bruto de un ticket concreto.
@@ -252,8 +252,8 @@ En este ejercicio trabajas de forma bastante completa:
 - **c_know**: resources de solo lectura sobre la base de conocimiento (`tickets/latest`, `tickets/{ticket_id}`).
 - **c_mem**: tools y resources para memoria persistente (`save_feedback`, `list_feedback`, `feedback/latest`).
 
-Primitivos MCP/FastMCP que aparecen:
+Primitivos MCP que aparecen:
 
-- Servidor MCP por STDIO (`FastMCP("incidents-rag")`).
+- Servidor MCP por STDIO (`MCPServer("incidents-rag")`).
 - Tools MCP (`@mcp.tool()`) que encapsulan el pipeline RAG y la gestión de feedback.
 - Resources MCP (`@mcp.resource(...)`) para exponer tickets y feedback como datos de solo lectura.

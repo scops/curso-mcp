@@ -27,7 +27,7 @@ A partir de ahí ejecuta siempre los ejemplos con `uv run …` desde la raíz de
 | Carpeta | Ejercicios | Qué construyes | Qué practicas en MCP |
 | --- | --- | --- | --- |
 | `ej1_first_chatbot/` | Ejercicio 1 | Cliente + servidor MCP mínimo por STDIO. | c_tools sencillos, c_state (cliente/servidor), tests básicos. |
-| `ej2_4_chatbot_arxiv/` | Ejercicios 2-4 | Chatbot arXiv (versión sin MCP, con MCP y cliente OpenAI). | c_tools reales, c_instr (prompts MCP), uso de `ClientSession`. |
+| `ej2_4_chatbot_arxiv/` | Ejercicios 2-4 | Chatbot arXiv (versión sin MCP, con MCP y cliente OpenAI). | c_tools reales, c_instr (prompts MCP), uso de `Client`. |
 | `ej5_6_chatbot_omdb/` | Ejercicios 5-6 | Servidor MCP HTTP (OMDb) + cliente Streamlit/Inspector. | c_tools sobre APIs externas, c_query (streamable-http). |
 | `ej7_mcp_rag_db/` | Ejercicio 7 | RAG sobre incidencias + servidor MCP con resources y memoria. | c_tools, c_know (resources), c_mem (feedback persistente). |
 | `ej8_sakila_streaming/` | Ejercicio 8 | Agente de “plataforma de streaming” (sakila + OMDb). | c_tools de lectura/escritura, c_query mixto, MAS (multi-servidor). |
@@ -99,7 +99,7 @@ A partir de ahí ejecuta siempre los ejemplos con `uv run …` desde la raíz de
 #### `ej10_reto/`
 - Diseñar un **servidor MCP propio** para esa API, con la complejidad que tú quieras. La versión básica puede ser:
 
-- Un servidor `FastMCP` con:
+- Un servidor `MCPServer` con:
   - 1–2 tools de búsqueda/listado.
   - 1–2 tools de detalle (por id, por nombre, etc.).
 A partir de ahí, puedes subir el nivel combinando ideas del curso:

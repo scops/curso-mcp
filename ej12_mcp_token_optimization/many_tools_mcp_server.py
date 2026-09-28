@@ -20,9 +20,9 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
-mcp = FastMCP("arxiv-suite")
+mcp = MCPServer("arxiv-suite")
 
 
 # ---------------------------------------------------------------------------

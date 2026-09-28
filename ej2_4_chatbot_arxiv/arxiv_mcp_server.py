@@ -8,14 +8,14 @@ from dotenv import load_dotenv
 # Cargar variables de entorno
 load_dotenv()
 
-from mcp.server.fastmcp import FastMCP, Context  # noqa: E402
+from mcp.server.mcpserver import MCPServer, Context  # noqa: E402
 from mcp.server.elicitation import (  # noqa: E402
     AcceptedElicitation,
     CancelledElicitation,
     DeclinedElicitation,
 )
 from pydantic import BaseModel, Field  # noqa: E402
-from mcp.server.fastmcp.prompts import base  # noqa: E402
+from mcp.server.mcpserver.prompts import base  # noqa: E402
 
 from tools_arxiv import search_papers, extract_info  # noqa: E402
 
@@ -48,7 +48,7 @@ Al responder:
 """
 
 
-mcp = FastMCP("arxiv-tools", instructions=INSTRUCTIONS)
+mcp = MCPServer("arxiv-tools", instructions=INSTRUCTIONS)
 
 
 @mcp.tool()
@@ -94,12 +94,12 @@ def server_info(ctx: Context) -> dict:
     """Get information about the current server."""
     logger.info("ℹ️  SERVER_INFO llamada")
     info = {
-        "name": ctx.fastmcp.name,
-        "instructions": ctx.fastmcp.instructions,
-        "debug_mode": ctx.fastmcp.settings.debug,
-        "log_level": ctx.fastmcp.settings.log_level,
-        "host": ctx.fastmcp.settings.host,
-        "port": ctx.fastmcp.settings.port,
+        "name": ctx.mcp_server.name,
+        "instructions": ctx.mcp_server.instructions,
+        "debug_mode": ctx.mcp_server.settings.debug,
+        "log_level": ctx.mcp_server.settings.log_level,
+        "host": ctx.mcp_server.settings.host,
+        "port": ctx.mcp_server.settings.port,
     }
     logger.info(f"✅ SERVER_INFO completada - servidor: {info['name']}")
     return info
@@ -116,10 +116,10 @@ def who_am_i(ctx: Context) -> dict:
     """
     logger.info("👤 WHO_AM_I llamada")
     identity = {
-        "server_name": ctx.fastmcp.name,
+        "server_name": ctx.mcp_server.name,
         "transport": "stdio",
-        "debug_mode": ctx.fastmcp.settings.debug,
-        "log_level": ctx.fastmcp.settings.log_level,
+        "debug_mode": ctx.mcp_server.settings.debug,
+        "log_level": ctx.mcp_server.settings.log_level,
     }
     logger.info(f"✅ WHO_AM_I completada - servidor: {identity['server_name']}")
     return identity
@@ -167,7 +167,7 @@ def prompt_analisis_detallado() -> list[base.Message]:
 @mcp.tool()
 async def analyze_paper_with_confirmation(ctx: Context) -> Dict[str, Any]:
     """
-    Ejemplo de elicitation con FastMCP.
+    Ejemplo de elicitation con el SDK MCP.
 
     Flujo:
     - El servidor pide al usuario qué paper de arXiv analizar

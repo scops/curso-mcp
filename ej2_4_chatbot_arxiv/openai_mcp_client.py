@@ -10,8 +10,7 @@ from typing import Any, Dict, List
 
 from dotenv import load_dotenv
 
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+from mcp import Client, StdioServerParameters
 
 
 """
@@ -88,18 +87,14 @@ async def run_single_query_with_openai_and_mcp(query: str) -> str:
             env=None,
         )
 
-        stdio_transport = await exit_stack.enter_async_context(
-            stdio_client(server_params)
+        # OJO: lo llamamos `mcp_client` (no `client`) porque `client` ya está
+        # usado más arriba para el cliente OpenAI global.
+        mcp_client = await exit_stack.enter_async_context(
+            Client(server_params)
         )
-        stdio, write = stdio_transport
-
-        session = await exit_stack.enter_async_context(
-            ClientSession(stdio, write)
-        )
-        await session.initialize()
 
         # 1) Descubrir tools MCP y adaptarlas al formato de OpenAI
-        tools_response = await session.list_tools()
+        tools_response = await mcp_client.list_tools()
 
         openai_tools: List[Dict[str, Any]] = [
             {
@@ -107,7 +102,7 @@ async def run_single_query_with_openai_and_mcp(query: str) -> str:
                 "function": {
                     "name": tool.name,
                     "description": tool.description,
-                    "parameters": tool.inputSchema,
+                    "parameters": tool.input_schema,
                 },
             }
             for tool in tools_response.tools
@@ -165,7 +160,7 @@ async def run_single_query_with_openai_and_mcp(query: str) -> str:
                 tool_args = {}
 
             # Llamamos al servidor MCP
-            result = await session.call_tool(tool_name, tool_args)
+            result = await mcp_client.call_tool(tool_name, tool_args)
 
             # Convertimos el resultado del tool a algo JSON-serializable.
             # Los ToolResult del SDK MCP incluyen objetos como TextContent,

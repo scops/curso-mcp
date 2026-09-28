@@ -56,7 +56,7 @@ Dentro de `ej8_sakila_streaming/` encontrarás:
     - `execute_and_return_id(query, params)` → para hacer `INSERT` y devolver el `id` generado.
 
 - `sakila_mcp_server.py`  
-  Servidor MCP (`FastMCP("sakila-streaming")`) que combina:
+  Servidor MCP (`MCPServer("sakila-streaming")`) que combina:
   - Lectura desde la base de datos `sakila`.
   - Llamadas a la API de OMDb usando `httpx` y `OMDB_API_KEY`.
 
@@ -123,7 +123,7 @@ Esto abrirá una aplicación en tu navegador (por defecto `http://localhost:8501
 
 Cada vez que haces una pregunta, el flujo es:
 
-1. El cliente abre una sesión MCP (`ClientSession`) con el servidor `sakila_mcp_server.py`.
+1. El cliente abre una sesión MCP (`Client`) con el servidor `sakila_mcp_server.py`.
 2. Llama a `list_tools()` para descubrir las tools disponibles.
 3. Pasa esa lista de tools a Claude junto con tu mensaje.
 4. El modelo puede:
@@ -231,8 +231,8 @@ En este ejercicio final trabajas sobre todo:
 - **c_query**: combinación de STDIO (sakila) y HTTP (OMDb) como canales MCP.
 - **MAS / multi‑servidor**: coordinación entre varios servidores MCP (sakila + OMDb) desde un mismo host.
 
-Primitivos MCP/FastMCP que aparecen:
+Primitivos MCP que aparecen:
 
-- Servidor MCP por STDIO para sakila (`FastMCP("sakila-streaming")`).
+- Servidor MCP por STDIO para sakila (`MCPServer("sakila-streaming")`).
 - Tools MCP que mezclan datos internos (MySQL) y externos (OMDb vía HTTP).
 - Cliente MCP en Streamlit que orquesta `list_tools()` y `call_tool()` para construir respuestas y visualizaciones.

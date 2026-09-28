@@ -20,17 +20,17 @@ class _FakeSettings:
     port = 8000
 
 
-class _FakeFastMCP:
+class _FakeMCPServer:
     name = "arxiv-tools"
     instructions = "instrucciones de prueba"
     settings = _FakeSettings()
 
 
 class _FakeCtx:
-    """Context mínimo: solo expone .fastmcp y un .elicit configurable."""
+    """Context mínimo: solo expone .mcp_server y un .elicit configurable."""
 
     def __init__(self, elicit_result=None) -> None:
-        self.fastmcp = _FakeFastMCP()
+        self.mcp_server = _FakeMCPServer()
         self._elicit_result = elicit_result
 
     async def elicit(self, message, schema):

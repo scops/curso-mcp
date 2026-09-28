@@ -10,11 +10,11 @@ negocio propia, sino que **orquesta** otros servidores MCP por ti.
 
 El servidor `orchestrator_mcp_server.py`:
 
-- Se expone como servidor MCP por STDIO (`FastMCP("orchestrator")`).
+- Se expone como servidor MCP por STDIO (`MCPServer("orchestrator")`).
 - Cuando le llamas a ciertos tools:
   - Lanza el servidor RAG de incidencias (`ej7_mcp_rag_db/rag_mcp_server.py`) vía STDIO.
   - Lanza el servidor de arXiv (`ej2_4_chatbot_arxiv/arxiv_mcp_server.py`) vía STDIO.
-  - Usa `ClientSession` para llamar a sus tools (`rag_answer`, `search_papers_mcp`) y combina los resultados.
+  - Usa `Client` para llamar a sus tools (`rag_answer`, `search_papers_mcp`) y combina los resultados.
 
 Así practicas **MCP “sobre MCP”**: un servidor que internamente es también un cliente MCP.
 
@@ -123,10 +123,10 @@ Encaje en el esquema del curso:
 - **c_tools**: tools de alto nivel que no hablan directamente con APIs o BDs, sino con otros servidores MCP.
 - **c_state / MAS**: un servidor que coordina a otros servidores MCP, actuando como “agente orquestador”.
 
-Primitivos MCP/FastMCP que aparecen:
+Primitivos MCP que aparecen:
 
-- Uso de `ClientSession` y `stdio_client` dentro de un servidor MCP.
-- Llamadas `session.initialize()` y `session.call_tool(...)` a servidores hijos.
+- Uso de `Client(StdioServerParameters(...))` dentro de un servidor MCP para hablar con servidores hijos.
+- Llamadas `client.call_tool(...)` a servidores hijos (protocolo 2026-07-28: sin `initialize`).
 - Tools MCP que agregan resultados de varias fuentes en una sola respuesta estructurada.
 
 Este ejercicio es un buen cierre para ver cómo MCP no solo sirve para “hacer tools”, sino también para

@@ -5,8 +5,7 @@ import os
 import streamlit as st
 from anthropic import Anthropic
 from dotenv import load_dotenv
-from mcp import ClientSession
-from mcp.client.streamable_http import streamable_http_client
+from mcp import Client
 
 # ============================================================================
 # VERSIÓN "CON CONTEXTO" (ctx) del cliente OMDb + MCP + LLM
@@ -101,86 +100,83 @@ async def ask_llm_with_ctx(ctx):
       4) Devuelve la respuesta final y el ctx actualizado.
     """
 
-    async with streamable_http_client(MCP_URL) as (read, write, _):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
+    async with Client(MCP_URL) as client:
+        # 1) Descubrimos tools en el servidor MCP
+        tools_response = await client.list_tools()
+        available_tools = [
+            {
+                "name": tool.name,
+                "description": tool.description,
+                "input_schema": tool.input_schema,
+            }
+            for tool in tools_response.tools
+        ]
 
-            # 1) Descubrimos tools en el servidor MCP
-            tools_response = await session.list_tools()
-            available_tools = [
-                {
-                    "name": tool.name,
-                    "description": tool.description,
-                    "input_schema": tool.inputSchema,
-                }
-                for tool in tools_response.tools
-            ]
+        # Bucle agéntico acotado a 3 vueltas de "el modelo pide tools ->
+        # ejecutamos -> el modelo razona de nuevo". El tope evita bucles
+        # infinitos y limita coste/latencia. 3 basta para el flujo típico:
+        # buscar, (opcional) pedir el detalle de un resultado, y redactar
+        # la respuesta final.
+        for _ in range(3):
+            # CLAVE DEL CONTEXTO: pasamos `ctx` completo, no un mensaje
+            # nuevo aislado. Claude ve toda la conversación previa.
+            response = llm_client.messages.create(
+                model=ANTHROPIC_MODEL,
+                max_tokens=800,
+                system=SYSTEM_PROMPT,
+                messages=ctx,
+                tools=available_tools,
+            )
 
-            # Bucle agéntico acotado a 3 vueltas de "el modelo pide tools ->
-            # ejecutamos -> el modelo razona de nuevo". El tope evita bucles
-            # infinitos y limita coste/latencia. 3 basta para el flujo típico:
-            # buscar, (opcional) pedir el detalle de un resultado, y redactar
-            # la respuesta final.
-            for _ in range(3):
-                # CLAVE DEL CONTEXTO: pasamos `ctx` completo, no un mensaje
-                # nuevo aislado. Claude ve toda la conversación previa.
-                response = llm_client.messages.create(
-                    model=ANTHROPIC_MODEL,
-                    max_tokens=800,
-                    system=SYSTEM_PROMPT,
-                    messages=ctx,
-                    tools=available_tools,
+            tool_uses = [c for c in response.content if c.type == "tool_use"]
+            text_blocks = [c for c in response.content if c.type == "text"]
+
+            # 2) Si no hay tool_use, tenemos respuesta final.
+            #    La guardamos en el ctx para que forme parte de la memoria.
+            if not tool_uses:
+                final_text = "\n\n".join(tb.text for tb in text_blocks) if text_blocks else ""
+                if final_text:
+                    ctx.append({"role": "assistant", "content": final_text})
+                return final_text, ctx
+
+            # 3) Hay tool_use: añadimos al ctx el mensaje del assistant con
+            #    esos bloques de herramienta (forma parte de la memoria).
+            ctx.append({"role": "assistant", "content": response.content})
+
+            # 4) Ejecutamos cada tool en el servidor MCP y añadimos su
+            #    resultado al ctx como tool_result.
+            for tu in tool_uses:
+                tool_result = await client.call_tool(tu.name, tu.input)
+
+                if hasattr(tool_result, "model_dump"):
+                    tool_payload = tool_result.model_dump(mode="json")
+                else:
+                    tool_payload = {"raw_result": str(tool_result)}
+
+                tool_result_text = json.dumps(
+                    tool_payload, ensure_ascii=False, indent=2
                 )
 
-                tool_uses = [c for c in response.content if c.type == "tool_use"]
-                text_blocks = [c for c in response.content if c.type == "text"]
+                ctx.append(
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": tu.id,
+                                "content": tool_result_text,
+                            }
+                        ],
+                    }
+                )
 
-                # 2) Si no hay tool_use, tenemos respuesta final.
-                #    La guardamos en el ctx para que forme parte de la memoria.
-                if not tool_uses:
-                    final_text = "\n\n".join(tb.text for tb in text_blocks) if text_blocks else ""
-                    if final_text:
-                        ctx.append({"role": "assistant", "content": final_text})
-                    return final_text, ctx
-
-                # 3) Hay tool_use: añadimos al ctx el mensaje del assistant con
-                #    esos bloques de herramienta (forma parte de la memoria).
-                ctx.append({"role": "assistant", "content": response.content})
-
-                # 4) Ejecutamos cada tool en el servidor MCP y añadimos su
-                #    resultado al ctx como tool_result.
-                for tu in tool_uses:
-                    tool_result = await session.call_tool(tu.name, tu.input)
-
-                    if hasattr(tool_result, "model_dump"):
-                        tool_payload = tool_result.model_dump(mode="json")
-                    else:
-                        tool_payload = {"raw_result": str(tool_result)}
-
-                    tool_result_text = json.dumps(
-                        tool_payload, ensure_ascii=False, indent=2
-                    )
-
-                    ctx.append(
-                        {
-                            "role": "user",
-                            "content": [
-                                {
-                                    "type": "tool_result",
-                                    "tool_use_id": tu.id,
-                                    "content": tool_result_text,
-                                }
-                            ],
-                        }
-                    )
-
-            # Demasiados pasos sin texto final claro
-            fallback = (
-                "He usado varias herramientas pero no he obtenido una respuesta "
-                "clara. Intenta reformular tu pregunta."
-            )
-            ctx.append({"role": "assistant", "content": fallback})
-            return fallback, ctx
+        # Demasiados pasos sin texto final claro
+        fallback = (
+            "He usado varias herramientas pero no he obtenido una respuesta "
+            "clara. Intenta reformular tu pregunta."
+        )
+        ctx.append({"role": "assistant", "content": fallback})
+        return fallback, ctx
 
 
 def trim_ctx(ctx, max_messages=MAX_CTX_MESSAGES):

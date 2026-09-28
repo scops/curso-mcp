@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import logging
 import os
 import re
 from typing import Any, Literal
 
 import httpx
 from dotenv import load_dotenv
-from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.mcpserver import Context, MCPServer
 
 # ----------------------------------------------------------------------------
 # El "Context" (ctx) de MCP
@@ -15,17 +16,19 @@ from mcp.server.fastmcp import Context, FastMCP
 # (la lista de mensajes que recuerda el LLM). Son dos cosas distintas que por
 # desgracia se suelen abreviar igual ("ctx").
 #
-# El `Context` de MCP es un objeto que FastMCP INYECTA automáticamente en una
+# El `Context` de MCP es un objeto que el SDK INYECTA automáticamente en una
 # tool cuando declaras un parámetro con ese tipo (ver `ctx: Context` más abajo).
 # No se lo pide al usuario ni al LLM: no aparece en el input_schema de la tool.
-# Sirve para que la tool, MIENTRAS se ejecuta en el servidor, pueda "hablar
-# hacia atrás" con el cliente:
-#   - ctx.info() / debug() / warning() / error()  -> enviar logs al cliente
-#   - ctx.report_progress(actual, total)          -> notificar progreso
-#   - ctx.read_resource(uri)                       -> leer un resource del server
-#   - ctx.sample(...)                              -> pedir al cliente que use su LLM
-# Aquí lo usamos solo para logging y progreso, que es lo más fácil de ver.
+#
+# IMPORTANTE (protocolo 2026-07-28): las capacidades "roots", "sampling" y
+# "logging a nivel de protocolo" (ctx.info/debug/warning/error) han quedado
+# DEPRECADAS. Para logs usamos ahora el módulo estándar `logging` de Python
+# (va a stderr, nunca al modelo). Lo que SIGUE vigente en `Context` y usamos
+# aquí es `ctx.report_progress(actual, total, message)` para notificar avance
+# al cliente durante una tool larga.
 # ----------------------------------------------------------------------------
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -39,11 +42,8 @@ OMDB_BASE_URL = "https://www.omdbapi.com/"
 # Servidor MCP para OMDb.
 # En este ejercicio lo exponemos por HTTP para que puedas
 # probarlo fácilmente en localhost:8000 (como lo tenías antes).
-mcp = FastMCP(
-    name="omdb-tools",
-    host="0.0.0.0",
-    port=8000,
-)
+# NOTA (mcp v2): host/port ya no van en el constructor, se pasan a `.run(...)`.
+mcp = MCPServer(name="omdb-tools")
 
 
 async def _omdb_request(params: dict[str, Any]) -> dict[str, Any]:
@@ -117,13 +117,14 @@ async def search_movies(
     media_type: Literal["movie", "series", "episode", "all"] = "all",
     year: int | None = None,
     max_results: int = 5,
-    ctx: Context = None,  # inyectado por FastMCP; NO lo ve el LLM/usuario
+    ctx: Context = None,  # inyectado por el SDK; NO lo ve el LLM/usuario
     ) -> dict[ str, Any]:
     """
     Permite buscar películas en la api rest de omdb
     """
-    # Logging vía Context: este mensaje viaja al CLIENTE (no es un print local).
-    await ctx.info(f"search_movies: consultando OMDb con query='{query}'")
+    # Logging local (stderr) con el módulo estándar, NO ctx.info() (deprecado).
+    logger.info("search_movies: consultando OMDb con query=%r", query)
+    await ctx.report_progress(1, total=2, message="Consultando OMDb...")
 
     # pasamos query y buscamos, devolvemos resultado.
     # saneamos la query para dejar sólo un posible nombre de película
@@ -165,7 +166,8 @@ async def search_movies(
     items = [_format_basic_pelicula(item) for item in limited]
 
     # Progreso vía Context: útil cuando una tool es lenta o procesa por lotes.
-    await ctx.info(f"search_movies: {len(items)} resultados devueltos")
+    await ctx.report_progress(2, total=2, message=f"{len(items)} resultados devueltos")
+    logger.info("search_movies: %d resultados devueltos", len(items))
 
     note = None
     if total_resp > len(items):
@@ -191,10 +193,11 @@ async def search_movies(
 async def get_movie_detail(
     imdb_id: str,
     plot: Literal["short", "full"] = "short",
-    ctx: Context = None,  # inyectado por FastMCP; NO lo ve el LLM/usuario
+    ctx: Context = None,  # inyectado por el SDK; NO lo ve el LLM/usuario
 ) -> dict[str, Any]:
     """Devuelve detalles sobre la película indicada, necesita un imdb_id válido. Se puede especificar un plot resumido o uno detallado."""
-    await ctx.info(f"get_movie_detail: pidiendo detalles de {imdb_id}")
+    logger.info("get_movie_detail: pidiendo detalles de %s", imdb_id)
+    await ctx.report_progress(1, total=1, message=f"Pidiendo detalles de {imdb_id}")
     # pedimos por id y devolvemos result
     imdb_id_clean = (imdb_id or "").strip()
     # Validar que sea un ID de IMDB válido (formato: tt seguido de 7-10 dígitos)
@@ -215,7 +218,7 @@ def main() -> None:
     # Aquí usamos transporte HTTP, que es lo que permite acceder
     # al servidor en http://localhost:8000 (por ejemplo, para
     # probar desde el navegador o herramientas HTTP).
-    mcp.run(transport="streamable-http")
+    mcp.run(transport="streamable-http", host="0.0.0.0", port=8000)
 
 
 if __name__ == "__main__":
