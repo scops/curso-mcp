@@ -42,6 +42,8 @@ Requisitos de entorno (.env):
 
 - OPENAI_API_KEY=tu_api_key_de_openai
 - OPENAI_MODEL=gpt-4o-mini   (u otro modelo OpenAI que soporte tools)
+- OPENAI_REASONING_EFFORT=none   (opcional; necesario en modelos de razonamiento
+  como gpt-5.x, que en /v1/chat/completions solo aceptan tools con 'none')
 """
 
 
@@ -58,6 +60,12 @@ if not OPENAI_API_KEY:
 OPENAI_MODEL = os.getenv("OPENAI_MODEL")
 if not OPENAI_MODEL:
     raise RuntimeError("Falta OPENAI_MODEL en el entorno / .env")
+
+# Opcional: solo se envía si está definido (gpt-4o-mini no acepta este parámetro)
+OPENAI_REASONING_EFFORT = os.getenv("OPENAI_REASONING_EFFORT")
+EXTRA_PARAMS: Dict[str, Any] = (
+    {"reasoning_effort": OPENAI_REASONING_EFFORT} if OPENAI_REASONING_EFFORT else {}
+)
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
@@ -121,6 +129,7 @@ async def run_single_query_with_openai_and_mcp(query: str) -> str:
             messages=messages,
             tools=openai_tools,
             tool_choice="auto",
+            **EXTRA_PARAMS,
         )
 
         msg = response.choices[0].message
@@ -188,6 +197,7 @@ async def run_single_query_with_openai_and_mcp(query: str) -> str:
         second_response = client.chat.completions.create(
             model=OPENAI_MODEL,
             messages=messages,
+            **EXTRA_PARAMS,
         )
 
         return second_response.choices[0].message.content or ""

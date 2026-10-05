@@ -142,22 +142,26 @@ Más adelante puedes jugar a modificar estas plantillas para cambiar el estilo d
 
 ### 4.2. Elicitations: el servidor pide datos al usuario
 
-En la versión con MCP también se introduce un ejemplo de **elicitation** en `arxiv_mcp_server.py`:
+En la versión con MCP también se introduce un ejemplo de **elicitation** (el servidor pide un dato al usuario en mitad de una tool) en `arxiv_mcp_server.py`:
 
-- Tool `analyze_paper_with_confirmation(ctx: Context)`:
-  - No recibe argumentos normales; en su lugar, usa `ctx.elicit(...)` para pedir al usuario:
+- Tool `analyze_paper_with_confirmation`:
+  - El modelo no le pasa argumentos. Antes de ejecutarla, el resolver `pedir_paper` pide al usuario:
     - qué `paper_id` (arxiv_id) quiere analizar,
     - y si confirma que quiere lanzar el análisis detallado.
-  - Según lo que el usuario haga en el host (rellenar/aceptar, declinar o cancelar), la tool devuelve:
+  - La respuesta llega a la tool ya resuelta, en el parámetro `seleccion`. Según lo que el usuario haga en el host (rellenar/aceptar, declinar o cancelar), la tool devuelve:
     - `status="ok"` con el análisis (`extract_info`) del paper elegido, o
     - `status="cancelled"` con una razón (`user_did_not_confirm`, `user_declined_elicitation`, `user_cancelled_operation`).
 
+¿Por qué `Resolve` y no `ctx.elicit`?
+
+Con la spec 2026-07-28 el servidor ya no dispone de un canal de vuelta hacia el cliente en mitad de una llamada, que es justo lo que permite servidores stateless (sin sesión). Por eso `ctx.elicit(...)`, la forma clásica, lanza `NoBackChannelError` con los clientes modernos. Al anotar el parámetro con `Annotated[..., Resolve(pedir_paper)]` dejamos que el SDK haga la pregunta por nosotros. Con un cliente nuevo, la tool contesta "me falta este dato" y el cliente repite la llamada con la respuesta; con un cliente antiguo, el SDK usa la petición clásica. El comentario que precede a la tool en `arxiv_mcp_server.py` lo explica paso a paso, y el test `TestAnalyzePaperResolveExtremoAExtremo` recorre el flujo completo con un cliente en memoria.
+
 ¿Para qué sirve didácticamente?
 
-- Ves el patrón **“el servidor MCP también puede iniciar la interacción”**:
+- Vemos el patrón **“el servidor MCP también puede iniciar la interacción”**:
   - tools normales → el LLM decide cómo llamar al servidor,
   - elicitation → es el servidor el que pide información al usuario a través del host.
-- En tools como Inspector o Claude Desktop verás aparecer un pequeño formulario cuando se llama a esta tool, lo que ayuda a entender mejor la parte de `elicitation` de la spec MCP.
+- En tools como Inspector o Claude Desktop veremos aparecer un pequeño formulario cuando se llama a esta tool, lo que ayuda a entender mejor la parte de `elicitation` de la spec MCP.
 
 ---
 

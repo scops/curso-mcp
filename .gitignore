@@ -55,3 +55,4 @@ papers
 papers/*
 instructor
 .mcp.json
+demos/*

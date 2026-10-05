@@ -1,10 +1,11 @@
 import asyncio
+import json
 import unittest
 from unittest.mock import patch
 
-from pydantic import BaseModel
-
-from mcp.server.elicitation import (
+import mcp_types as types
+from mcp import Client
+from mcp.server.mcpserver import (
     AcceptedElicitation,
     CancelledElicitation,
     DeclinedElicitation,
@@ -27,19 +28,13 @@ class _FakeMCPServer:
 
 
 class _FakeCtx:
-    """Context mínimo: solo expone .mcp_server y un .elicit configurable."""
+    """Context mínimo: solo expone .mcp_server."""
 
-    def __init__(self, elicit_result=None) -> None:
+    def __init__(self) -> None:
         self.mcp_server = _FakeMCPServer()
-        self._elicit_result = elicit_result
-
-    async def elicit(self, message, schema):
-        return self._elicit_result
 
 
-class _PaperSelection(BaseModel):
-    paper_id: str
-    confirm: bool
+_PaperSelection = arxiv_mcp_server.PaperSelection
 
 
 class TestArxivMCPServer(unittest.TestCase):
@@ -96,38 +91,74 @@ class TestIntrospectionAndPrompts(unittest.TestCase):
 
 
 class TestAnalyzePaperElicitation(unittest.IsolatedAsyncioTestCase):
+    """Con Resolve, la tool recibe la respuesta ya resuelta como argumento."""
+
     async def test_acepta_y_confirma_lanza_analisis(self) -> None:
-        ctx = _FakeCtx(
-            AcceptedElicitation(data=_PaperSelection(paper_id="2401.01234", confirm=True))
+        seleccion = AcceptedElicitation(
+            data=_PaperSelection(paper_id="2401.01234", confirm=True)
         )
         with patch.object(
             arxiv_mcp_server, "extract_info", return_value={"found": True, "paper": {}}
         ) as mocked:
-            result = await arxiv_mcp_server.analyze_paper_with_confirmation(ctx)
+            result = await arxiv_mcp_server.analyze_paper_with_confirmation(seleccion)
 
         mocked.assert_called_once_with(paper_id="2401.01234")
         self.assertEqual(result["status"], "ok")
         self.assertEqual(result["paper_id"], "2401.01234")
 
     async def test_acepta_sin_confirmar_se_cancela(self) -> None:
-        ctx = _FakeCtx(
-            AcceptedElicitation(data=_PaperSelection(paper_id="2401.01234", confirm=False))
+        seleccion = AcceptedElicitation(
+            data=_PaperSelection(paper_id="2401.01234", confirm=False)
         )
-        result = await arxiv_mcp_server.analyze_paper_with_confirmation(ctx)
+        result = await arxiv_mcp_server.analyze_paper_with_confirmation(seleccion)
         self.assertEqual(result["status"], "cancelled")
         self.assertEqual(result["reason"], "user_did_not_confirm")
 
     async def test_rechazo_se_cancela(self) -> None:
-        ctx = _FakeCtx(DeclinedElicitation())
-        result = await arxiv_mcp_server.analyze_paper_with_confirmation(ctx)
+        result = await arxiv_mcp_server.analyze_paper_with_confirmation(
+            DeclinedElicitation()
+        )
         self.assertEqual(result["status"], "cancelled")
         self.assertEqual(result["reason"], "user_declined_elicitation")
 
     async def test_cancelacion_se_cancela(self) -> None:
-        ctx = _FakeCtx(CancelledElicitation())
-        result = await arxiv_mcp_server.analyze_paper_with_confirmation(ctx)
+        result = await arxiv_mcp_server.analyze_paper_with_confirmation(
+            CancelledElicitation()
+        )
         self.assertEqual(result["status"], "cancelled")
         self.assertEqual(result["reason"], "user_cancelled_operation")
+
+
+class TestAnalyzePaperResolveExtremoAExtremo(unittest.IsolatedAsyncioTestCase):
+    """Flujo real: cliente MCP en memoria, el resolver pregunta y el cliente contesta."""
+
+    async def test_el_cliente_recibe_la_pregunta_y_la_tool_su_respuesta(self) -> None:
+        preguntas = []
+
+        async def responder(context, params: types.ElicitRequestParams) -> types.ElicitResult:
+            preguntas.append(params.message)
+            return types.ElicitResult(
+                action="accept", content={"paper_id": "2401.01234", "confirm": True}
+            )
+
+        with patch.object(
+            arxiv_mcp_server, "extract_info", return_value={"found": True, "paper": {}}
+        ) as mocked:
+            async with Client(arxiv_mcp_server.mcp, elicitation_callback=responder) as client:
+                tools = await client.list_tools()
+                tool = next(
+                    t for t in tools.tools if t.name == "analyze_paper_with_confirmation"
+                )
+                # El parámetro resuelto no forma parte del schema que ve el modelo
+                self.assertNotIn("seleccion", tool.input_schema.get("properties", {}))
+
+                result = await client.call_tool("analyze_paper_with_confirmation", {})
+
+        self.assertEqual(len(preguntas), 1)
+        mocked.assert_called_once_with(paper_id="2401.01234")
+        self.assertFalse(result.is_error)
+        texto = next(c.text for c in result.content if isinstance(c, types.TextContent))
+        self.assertEqual(json.loads(texto)["status"], "ok")
 
 
 if __name__ == "__main__":

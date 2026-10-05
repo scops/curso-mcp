@@ -1,18 +1,22 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Annotated, Any, Dict
 
 from dotenv import load_dotenv
 
 # Cargar variables de entorno
 load_dotenv()
 
-from mcp.server.mcpserver import MCPServer, Context  # noqa: E402
-from mcp.server.elicitation import (  # noqa: E402
+from mcp.server.mcpserver import (  # noqa: E402
     AcceptedElicitation,
     CancelledElicitation,
+    Context,
     DeclinedElicitation,
+    Elicit,
+    ElicitationResult,
+    MCPServer,
+    Resolve,
 )
 from pydantic import BaseModel, Field  # noqa: E402
 from mcp.server.mcpserver.prompts import base  # noqa: E402
@@ -164,36 +168,82 @@ def prompt_analisis_detallado() -> list[base.Message]:
     ]
 
 
-@mcp.tool()
-async def analyze_paper_with_confirmation(ctx: Context) -> Dict[str, Any]:
-    """
-    Ejemplo de elicitation con el SDK MCP.
+# ---------------------------------------------------------------------------
+# Elicitation con ctx.elicit frente a Resolve + Elicit
+# ---------------------------------------------------------------------------
+# La elicitation es el mecanismo con el que el servidor pide un dato al usuario
+# en mitad de una tool (el host le muestra un pequeño formulario y nos devuelve
+# lo que haya contestado).
+#
+# Hasta la spec 2025-11-25 la escribíamos con `await ctx.elicit(...)` dentro de
+# la tool. Esa llamada abre una petición del servidor hacia el cliente y deja la
+# tool esperando la respuesta, algo que solo es posible si la conexión tiene un
+# canal de vuelta y una sesión viva entre ambos.
+#
+# La spec 2026-07-28 elimina ese canal de vuelta para que los servidores puedan
+# ser stateless (sin sesión, de modo que cualquier réplica atiende cualquier
+# petición). Con un cliente moderno, `ctx.elicit` lanza NoBackChannelError; solo
+# sigue funcionando con clientes antiguos.
+#
+# El SDK v2 nos da una vía que funciona en las dos épocas. Declaramos el dato que
+# necesitamos como un parámetro anotado con `Resolve(funcion)`. Antes de ejecutar
+# la tool, el SDK llama a esa función, a la que llamamos resolver, y si devuelve
+# `Elicit(mensaje, Modelo)` se encarga de preguntar al usuario por nosotros:
+#   - con un cliente 2026-07-28, la tool contesta "me falta este dato"
+#     (InputRequiredResult) y el cliente repite la llamada adjuntando la respuesta;
+#   - con un cliente antiguo, envía la petición clásica en mitad de la llamada.
+# Nuestra tool recibe la respuesta ya resuelta y no necesita saber qué camino se
+# ha seguido.
+#
+# Tres detalles que conviene tener presentes.
+#   - El tipo del parámetro decide qué recibimos. Con `ElicitationResult[Modelo]`
+#     llega el resultado completo (aceptar, rechazar o cancelar) y lo repartimos
+#     con `match`. Con `Modelo` a secas llegan solo los datos, y un rechazo
+#     aborta la tool antes de entrar en ella.
+#   - El resolver puede ejecutarse más de una vez, una por cada vuelta del
+#     cliente. Por eso debe hacer siempre la misma pregunta y no tener efectos
+#     secundarios (nada de escribir en disco ni llamar a APIs antes del
+#     `return Elicit(...)`).
+#   - El parámetro resuelto no aparece en el schema de la tool, así que el modelo
+#     no puede rellenarlo ni inventárselo.
+# ---------------------------------------------------------------------------
 
-    Flujo:
-    - El servidor pide al usuario qué paper de arXiv analizar
-      y si confirma el análisis.
-    - El cliente (Inspector, Claude, Cursor...) mostrará el formulario
-      en la zona de "When the server requests information from the user…".
-    """
-    logger.info("🔬 ANALYZE_PAPER_WITH_CONFIRMATION llamada - esperando respuesta del usuario")
 
-    class PaperSelection(BaseModel):
-        paper_id: str = Field(
-            description="arxiv_id del paper que quieres analizar (ej. 2401.01234)"
-        )
-        confirm: bool = Field(
-            description="Marca true si quieres lanzar el análisis detallado"
-        )
-
-    result = await ctx.elicit(
-        message=(
-            "Indica el arxiv_id del paper que quieres analizar "
-            "y confirma que deseas lanzar el análisis."
-        ),
-        schema=PaperSelection,
+class PaperSelection(BaseModel):
+    paper_id: str = Field(
+        description="arxiv_id del paper que quieres analizar (ej. 2401.01234)"
+    )
+    confirm: bool = Field(
+        description="Marca true si quieres lanzar el análisis detallado"
     )
 
-    match result:
+
+def pedir_paper() -> Elicit[PaperSelection]:
+    """Resolver: pregunta al usuario qué paper analizar y si lo confirma."""
+    return Elicit(
+        "Indica el arxiv_id del paper que quieres analizar "
+        "y confirma que deseas lanzar el análisis.",
+        PaperSelection,
+    )
+
+
+@mcp.tool()
+async def analyze_paper_with_confirmation(
+    seleccion: Annotated[ElicitationResult[PaperSelection], Resolve(pedir_paper)],
+) -> Dict[str, Any]:
+    """
+    Ejemplo de elicitation con el SDK MCP v2 (Resolve + Elicit).
+
+    Flujo:
+    - Antes de entrar en la tool, el resolver `pedir_paper` pide al usuario
+      qué paper de arXiv analizar y si confirma el análisis.
+    - El cliente (Inspector, Claude, Cursor...) mostrará el formulario
+      en la zona de "When the server requests information from the user…".
+    - La tool recibe en `seleccion` la respuesta ya resuelta.
+    """
+    logger.info("🔬 ANALYZE_PAPER_WITH_CONFIRMATION llamada con la respuesta del usuario")
+
+    match seleccion:
         case AcceptedElicitation(data=data):
             if not data.confirm:
                 logger.info(f"⚠️  Usuario no confirmó análisis para {data.paper_id}")

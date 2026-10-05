@@ -45,7 +45,7 @@ A partir de ahí, puedes subir el nivel combinando ideas del curso:
     - “Analista técnico de Y”.
 
 - **Elicitation**  
-  - Tools que pidan datos al usuario vía `ctx.elicit(...)` antes de llamar a la API.
+  - Tools que pidan datos al usuario con `Resolve` + `Elicit` antes de llamar a la API (el patrón de `analyze_paper_with_confirmation` en ej2_4; `ctx.elicit(...)` ya no funciona con clientes 2026-07-28).
 
 - **RAG (opcional)**  
   - Pequeño índice local (SQLite, JSON o memoria) con datos de tu dominio, expuesto como servidor MCP.
