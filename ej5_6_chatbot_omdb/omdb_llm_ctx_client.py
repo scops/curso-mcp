@@ -122,7 +122,7 @@ async def ask_llm_with_ctx(ctx):
             # nuevo aislado. Claude ve toda la conversación previa.
             response = llm_client.messages.create(
                 model=ANTHROPIC_MODEL,
-                max_tokens=800,
+                max_tokens=4000,
                 system=SYSTEM_PROMPT,
                 messages=ctx,
                 tools=available_tools,

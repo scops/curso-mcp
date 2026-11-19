@@ -176,10 +176,15 @@ PROMPT_RESPUESTA_NL = dedent("""
 """).strip()
  
  
+def _texto(mensaje) -> str:
+    # Los modelos recientes pueden devolver bloques "thinking" antes del texto.
+    return "".join(b.text for b in mensaje.content if b.type == "text")
+
+
 def generar_sql(cliente: Anthropic, pregunta: str, contexto: str) -> str:
     mensaje = cliente.messages.create(
         model=CLAUDE_MODEL,
-        max_tokens=512,
+        max_tokens=4000,
         messages=[
             {
                 "role": "user",
@@ -189,7 +194,7 @@ def generar_sql(cliente: Anthropic, pregunta: str, contexto: str) -> str:
             }
         ],
     )
-    sql = mensaje.content[0].text.strip()
+    sql = _texto(mensaje).strip()
     # Limpieza defensiva: si Claude se nos despista y mete fences markdown
     sql = re.sub(r"^```(?:sql)?", "", sql, flags=re.MULTILINE)
     sql = re.sub(r"```$", "", sql, flags=re.MULTILINE)
@@ -201,7 +206,7 @@ def responder_lenguaje_natural(
 ) -> str:
     mensaje = cliente.messages.create(
         model=CLAUDE_MODEL,
-        max_tokens=512,
+        max_tokens=4000,
         messages=[
             {
                 "role": "user",
@@ -214,7 +219,7 @@ def responder_lenguaje_natural(
             }
         ],
     )
-    return mensaje.content[0].text.strip()
+    return _texto(mensaje).strip()
  
  
 # --------------------------------------------------------------------------- #

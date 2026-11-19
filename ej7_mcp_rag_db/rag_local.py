@@ -219,7 +219,7 @@ def answer(question: str, k: int = 5) -> Dict[str, Any]:
 
     response = anthropic_client.messages.create(
         model=MODEL,
-        max_tokens=600,
+        max_tokens=4000,
         system=(
             "Eres un asistente de soporte técnico que responde solo con la "
             "información proporcionada en los tickets de incidencias."

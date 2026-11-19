@@ -50,7 +50,7 @@ if not ANTHROPIC_API_KEY:
 
 client = Anthropic(api_key=ANTHROPIC_API_KEY)
 MODEL = os.getenv("MODEL", "claude-haiku-4-5")
-MAX_TOKENS = int(os.getenv("ANTHROPIC_MAX_TOKENS", "600"))
+MAX_TOKENS = int(os.getenv("ANTHROPIC_MAX_TOKENS", "4000"))
 
 SERVER_PATH = str(Path(__file__).parent / "many_tools_mcp_server.py")
 OPTIMIZED_TOP_K = 3

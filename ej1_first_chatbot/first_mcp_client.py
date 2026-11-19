@@ -90,7 +90,7 @@ class MCPChatClient:
         # Primera llamada a Claude con las tools disponibles
         response = self.anthropic.messages.create(
             model=MODEL,
-            max_tokens=400,
+            max_tokens=4000,
             messages=messages,
             tools=available_tools,
         )
@@ -149,7 +149,7 @@ class MCPChatClient:
                 # Segunda llamada a Claude, ya con resultados del tool
                 response = self.anthropic.messages.create(
                     model=MODEL,
-                    max_tokens=400,
+                    max_tokens=4000,
                     messages=messages,
                     tools=available_tools,
                 )

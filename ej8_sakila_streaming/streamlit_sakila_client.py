@@ -78,7 +78,7 @@ async def ask_llm_with_mcp(user_query: str) -> str:
         for _ in range(3):
             response = anthropic_client.messages.create(
                 model=MODEL,
-                max_tokens=800,
+                max_tokens=4000,
                 tools=available_tools,
                 messages=messages,
             )

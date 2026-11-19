@@ -53,7 +53,7 @@ async def _call_anthropic(system: str, user_text: str) -> str:
             },
             json={
                 "model": rag_local.MODEL,
-                "max_tokens": 600,
+                "max_tokens": 4000,
                 "system": system,
                 "messages": [
                     {"role": "user", "content": [{"type": "text", "text": user_text}]}
@@ -63,7 +63,10 @@ async def _call_anthropic(system: str, user_text: str) -> str:
         )
         r.raise_for_status()
         data = r.json()
-    return data["content"][0]["text"]
+    # Los modelos recientes pueden devolver bloques "thinking" antes del texto.
+    return "".join(
+        block["text"] for block in data["content"] if block.get("type") == "text"
+    )
 
 
 @mcp.tool()

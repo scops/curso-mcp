@@ -27,7 +27,7 @@ if not ANTHROPIC_API_KEY:
 client = Anthropic(api_key=ANTHROPIC_API_KEY)
 
 DEFAULT_MODEL = os.getenv("MODEL", "claude-haiku-4-5-20251001")  # alias estable 
-DEFAULT_MAX_TOKENS = int(os.getenv("ANTHROPIC_MAX_TOKENS", "800"))
+DEFAULT_MAX_TOKENS = int(os.getenv("ANTHROPIC_MAX_TOKENS", "4000"))
 
 
 # -----------------------
